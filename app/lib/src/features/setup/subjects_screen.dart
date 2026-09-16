@@ -2,9 +2,11 @@ import 'package:academic_engine/academic_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/theme/app_colors.dart';
 import '../../data/entities.dart';
 import '../../data/repositories/academic_repository.dart';
 import 'setup_models.dart';
+import '../../core/widgets/shimmer.dart';
 
 /// Admin module: per-class coefficient management (with a versioned after-before
 /// confirmation, section 34) plus the subject catalog (national + school-owned).
@@ -225,7 +227,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
         future: _dataFuture,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return const ShimmerPanel();
           }
           if (snap.hasError) {
             return Center(
@@ -252,7 +254,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
             return const Center(child: Text('Create a class first.'));
           }
           if (_classId == null || _setupFuture == null) {
-            return const Center(child: CircularProgressIndicator());
+            return const ShimmerPanel();
           }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,7 +298,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                   future: _setupFuture,
                   builder: (context, s) {
                     if (s.connectionState != ConnectionState.done) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const ShimmerPanel();
                     }
                     if (s.hasError) {
                       return Center(
@@ -406,8 +408,28 @@ class _CoefficientsTable extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.all(12),
             child: Text(
-              '$className — resolved coefficient per subject',
+              '$className — subjects & coefficients for this class',
               style: Theme.of(context).textTheme.titleSmall,
+            ),
+          );
+        }
+        if (rows.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const Icon(Icons.menu_book_outlined, size: 32, color: AppColors.onSurfaceVariant),
+                const SizedBox(height: 10),
+                const Text('No subjects resolved for this class',
+                    style: TextStyle(fontFamily: 'Manrope', fontSize: 14, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 6),
+                Text(
+                  'Subjects come from the national curriculum for this level / series. '
+                  'If this looks wrong, check that the class level and series are correct.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: AppColors.onSurfaceVariant.withOpacity(0.7)),
+                ),
+              ],
             ),
           );
         }

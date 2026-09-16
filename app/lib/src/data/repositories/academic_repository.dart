@@ -36,6 +36,14 @@ class AcademicRepository {
     DateTime? endsOn,
     bool isCurrent = true,
   }) async {
+    // A school may have exactly one current academic year (DB partial unique
+    // index); clear the previous current year before promoting a new one.
+    if (isCurrent) {
+      await _client
+          .from('academic_years')
+          .update({'is_current': false})
+          .eq('school_id', schoolId);
+    }
     final rows = await _client
         .from('academic_years')
         .insert({
@@ -81,6 +89,15 @@ class AcademicRepository {
         .eq('term_id', termId)
         .order('number');
     return (rows as List).map((r) => Sequence.fromMap(r)).toList();
+  }
+
+  /// All sequences across a year's terms, flattened and ordered.
+  Future<List<Sequence>> sequencesForYear(String academicYearId) async {
+    final terms = await this.terms(academicYearId);
+    final nested = await Future.wait(terms.map((t) => sequences(t.id)));
+    final all = nested.expand((s) => s).toList()
+      ..sort((a, b) => a.number.compareTo(b.number));
+    return all;
   }
 
   /// Creates 3 terms (2 sequences each) and returns them nested.
@@ -221,6 +238,7 @@ class AcademicRepository {
   // ---------------------------------------------------------------------------
 
   static const String _classSelect = '*,'
+      'class_teacher_id,'
       'education_type:education_types(name),'
       'cycle:cycles(name),'
       'level:levels(name),'
@@ -291,6 +309,108 @@ class AcademicRepository {
 
   Future<void> deleteClass(String classId) async {
     await _client.from('classes').delete().eq('id', classId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Academic calendar: sequence status (open / close / finalize)
+  // ---------------------------------------------------------------------------
+
+  Future<void> updateSequenceStatus(String sequenceId, String status) async {
+    await _client
+        .from('sequences')
+        .update({'status': status})
+        .eq('id', sequenceId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Assessment schemes (national + school) and their components
+  // ---------------------------------------------------------------------------
+
+  Future<List<AssessmentScheme>> assessmentSchemes(String schoolId) async {
+    final rows = await _client
+        .from('assessment_schemes')
+        .select('*, assessment_scheme_components(*)')
+        .or('school_id.is.null,school_id.eq.$schoolId')
+        .order('name');
+    return (rows as List)
+        .map((r) {
+          final m = r as Map<String, dynamic>;
+          final componentRows =
+              (m['assessment_scheme_components'] as List?)?.cast<Map>() ?? const [];
+          return AssessmentScheme.fromMap(
+            m,
+            componentRows: componentRows.cast<Map<String, dynamic>>(),
+          );
+        })
+        .toList();
+  }
+
+  /// Creates or replaces a school assessment scheme through the
+  /// save_assessment_scheme RPC (validates that weights sum to 100).
+  Future<String?> saveAssessmentScheme({
+    required String schoolId,
+    required String name,
+    required List<Map<String, Object?>> components,
+    String? academicYearId,
+    String? educationTypeId,
+    String? levelId,
+    String? seriesId,
+    String? schemeId,
+  }) async {
+    final result = await _client.rpc(
+      'save_assessment_scheme',
+      params: {
+        'p_school_id': schoolId,
+        'p_name': name,
+        'p_components': components,
+        'p_academic_year_id': academicYearId,
+        'p_education_type_id': educationTypeId,
+        'p_level_id': levelId,
+        'p_series_id': seriesId,
+        'p_source': 'SCHOOL_CONFIGURATION',
+        'p_scheme_id': schemeId,
+      },
+    );
+    return result?.toString();
+  }
+
+  Future<void> deleteAssessmentScheme(String schemeId) async {
+    await _client.from('assessment_schemes').delete().eq('id', schemeId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Academic rules (national defaults + school overrides)
+  // ---------------------------------------------------------------------------
+
+  Future<List<AcademicRule>> academicRules(String schoolId) async {
+    final rows = await _client
+        .from('academic_rules')
+        .select()
+        .or('school_id.is.null,school_id.eq.$schoolId')
+        .order('rule_key');
+    return (rows as List)
+        .map((r) => AcademicRule.fromMap(r as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Upserts a school-level academic rule for a given academic year
+  /// (school override wins over the national default at resolution time).
+  Future<void> upsertAcademicRule({
+    required String schoolId,
+    required String academicYearId,
+    required String ruleKey,
+    required Map<String, dynamic> ruleValue,
+    String? description,
+  }) async {
+    await _client.from('academic_rules').upsert({
+      'school_id': schoolId,
+      'academic_year_id': academicYearId,
+      'rule_key': ruleKey,
+      'rule_value': ruleValue,
+      'source': 'SCHOOL_CONFIGURATION',
+      'description': description,
+      'updated_at': DateTime.now().toIso8601String(),
+    }, onConflict: 'school_id,academic_year_id,rule_key');
   }
 
   // ---------------------------------------------------------------------------
@@ -531,6 +651,19 @@ class AcademicRepository {
       scheme: engine.resolveScheme(ctx, schemes),
     );
   }
+
+  /// Real dashboard metrics (pass rate + recent activity) from the RPC.
+  Future<DashboardMetrics?> dashboardMetrics({
+    required String schoolId,
+    required String academicYearId,
+  }) async {
+    final result = await _client.rpc('dashboard_metrics', params: {
+      'p_school': schoolId,
+      'p_year': academicYearId,
+    });
+    if (result == null) return null;
+    return DashboardMetrics.fromMap(result as Map<String, dynamic>);
+  }
 }
 
 class ResolvedAcademicSetup {
@@ -538,4 +671,72 @@ class ResolvedAcademicSetup {
   final SchemeConfig? scheme;
 
   ResolvedAcademicSetup({required this.subjects, required this.scheme});
+}
+
+// =============================================================================
+// Real dashboard metrics (from dashboard_metrics RPC)
+// =============================================================================
+
+class ClassPassRate {
+  final String classId;
+  final String className;
+  final int total;
+  final int passed;
+  final double passRate;
+
+  ClassPassRate({
+    required this.classId,
+    required this.className,
+    required this.total,
+    required this.passed,
+    required this.passRate,
+  });
+
+  factory ClassPassRate.fromMap(Map<String, dynamic> m) => ClassPassRate(
+        classId: m['class_id']?.toString() ?? '',
+        className: m['class_name']?.toString() ?? '',
+        total: (m['total'] as num?)?.toInt() ?? 0,
+        passed: (m['passed'] as num?)?.toInt() ?? 0,
+        passRate: (m['pass_rate'] as num?)?.toDouble() ?? 0,
+      );
+}
+
+class ActivityEvent {
+  final String kind;
+  final String title;
+  final DateTime createdAt;
+
+  ActivityEvent({required this.kind, required this.title, required this.createdAt});
+
+  factory ActivityEvent.fromMap(Map<String, dynamic> m) => ActivityEvent(
+        kind: m['kind']?.toString() ?? '',
+        title: m['title']?.toString() ?? '',
+        createdAt: DateTime.tryParse(m['created_at']?.toString() ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+      );
+}
+
+class DashboardMetrics {
+  final double? overallPassRate;
+  final List<ClassPassRate> classes;
+  final List<ActivityEvent> activity;
+
+  DashboardMetrics({
+    this.overallPassRate,
+    this.classes = const [],
+    this.activity = const [],
+  });
+
+  factory DashboardMetrics.fromMap(Map<String, dynamic> m) {
+    final pass = m['pass_rate'] is Map ? m['pass_rate'] as Map : const {};
+    final classRows = (pass['classes'] as List?)?.cast<Map>() ?? const [];
+    final activityRows = (m['activity'] as List?)?.cast<Map>() ?? const [];
+    return DashboardMetrics(
+      overallPassRate: (pass['overall'] as num?)?.toDouble(),
+      classes: classRows.map((r) => ClassPassRate.fromMap(r as Map<String, dynamic>)).toList(),
+      activity: activityRows.map((r) => ActivityEvent.fromMap(r as Map<String, dynamic>)).toList(),
+    );
+  }
+
+  bool get hasPassRate => classes.isNotEmpty;
 }

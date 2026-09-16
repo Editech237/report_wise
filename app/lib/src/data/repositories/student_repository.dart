@@ -28,7 +28,7 @@ class StudentRepository {
     // Optimized: query enrollments directly — uses index (school_id, academic_year_id), avoids scanning all students
     final rows = await _client
         .from('student_enrollments')
-        .select('id, class_id, status, student:students(id, school_id, full_name, matricule, date_of_birth, gender), class:classes(name)')
+        .select('id, class_id, status, student:students(id, school_id, full_name, matricule, date_of_birth, gender, place_of_birth, guardian_name, guardian_phone, repeater), class:classes(name)')
         .eq('school_id', schoolId)
         .eq('academic_year_id', academicYearId)
         .order('created_at')
@@ -79,6 +79,10 @@ class StudentRepository {
     String? matricule,
     DateTime? dateOfBirth,
     String? gender,
+    String? placeOfBirth,
+    String? guardianName,
+    String? guardianPhone,
+    bool repeater = false,
     String? classId,
     String? academicYearId,
   }) async {
@@ -90,6 +94,10 @@ class StudentRepository {
           'matricule': matricule?.trim().isEmpty ?? true ? null : matricule!.trim(),
           'date_of_birth': dateOfBirth?.toIso8601String().split('T').first,
           'gender': gender,
+          'place_of_birth': placeOfBirth?.trim().isEmpty ?? true ? null : placeOfBirth!.trim(),
+          'guardian_name': guardianName?.trim().isEmpty ?? true ? null : guardianName!.trim(),
+          'guardian_phone': guardianPhone?.trim().isEmpty ?? true ? null : guardianPhone!.trim(),
+          'repeater': repeater,
         })
         .select()
         .single();
@@ -115,12 +123,20 @@ class StudentRepository {
     String? matricule,
     DateTime? dateOfBirth,
     String? gender,
+    String? placeOfBirth,
+    String? guardianName,
+    String? guardianPhone,
+    bool? repeater,
   }) async {
     final patch = <String, dynamic>{};
     if (fullName != null) patch['full_name'] = fullName.trim();
     if (matricule != null) patch['matricule'] = matricule.trim().isEmpty ? null : matricule.trim();
     if (dateOfBirth != null) patch['date_of_birth'] = dateOfBirth.toIso8601String().split('T').first;
     if (gender != null) patch['gender'] = gender;
+    if (placeOfBirth != null) patch['place_of_birth'] = placeOfBirth.trim().isEmpty ? null : placeOfBirth.trim();
+    if (guardianName != null) patch['guardian_name'] = guardianName.trim().isEmpty ? null : guardianName.trim();
+    if (guardianPhone != null) patch['guardian_phone'] = guardianPhone.trim().isEmpty ? null : guardianPhone.trim();
+    if (repeater != null) patch['repeater'] = repeater;
     if (patch.isEmpty) throw ArgumentError('No fields to update');
     final row = await _client.from('students').update(patch).eq('id', studentId).select().single();
     return Student.fromMap(row);

@@ -1,55 +1,70 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
-
-class ActivityItem {
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBgColor;
-  final String title;
-  final String timeAgo;
-  const ActivityItem({required this.icon, required this.iconColor, required this.iconBgColor, required this.title, required this.timeAgo});
-}
+import '../../../core/widgets/shimmer.dart';
+import '../../../data/repositories/academic_repository.dart';
 
 class RecentActivityPanel extends StatelessWidget {
-  final List<ActivityItem>? items;
-  const RecentActivityPanel({super.key, this.items});
+  final List<ActivityEvent>? items;
+  final bool loading;
 
-  static const _default = [
-    ActivityItem(icon: Icons.description_outlined, iconColor: AppColors.primary, iconBgColor: Color(0x1A0B5D3B), title: 'Mme. Njoh uploaded Form 4 Mathematics marks', timeAgo: '12 MINUTES AGO'),
-    ActivityItem(icon: Icons.check_circle_outline_rounded, iconColor: Color(0xFF2E7D32), iconBgColor: Color(0xFFE8F5E9), title: 'Attendance record for 1ère C submitted', timeAgo: '45 MINUTES AGO'),
-    ActivityItem(icon: Icons.access_time_rounded, iconColor: Color(0xFFD32F2F), iconBgColor: Color(0xFFFFEBEE), title: 'Discipline warning issued: Form 3 (A. Ambe)', timeAgo: '2 HOURS AGO'),
-  ];
+  const RecentActivityPanel({super.key, this.items, this.loading = false});
 
   @override
   Widget build(BuildContext context) {
-    final list = items ?? _default;
+    if (loading) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ShimmerBlock(height: 18, width: 200),
+            SizedBox(height: 8),
+            ShimmerBlock(height: 12, width: 200),
+            SizedBox(height: 20),
+            ShimmerBlock(height: 48),
+            SizedBox(height: 12),
+            ShimmerBlock(height: 48),
+            SizedBox(height: 12),
+            ShimmerBlock(height: 48),
+          ],
+        ),
+      );
+    }
+
+    final list = items ?? const <ActivityEvent>[];
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Recent Activity', style: TextStyle(fontFamily: 'Manrope', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+          const Text('Recent Activity',
+              style: TextStyle(fontFamily: 'Manrope', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
           const SizedBox(height: 4),
-          Text('Real-time faculty and system updates', style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: AppColors.onSurfaceVariant.withOpacity(0.7))),
+          Text('Latest school & system updates',
+              style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: AppColors.onSurfaceVariant.withOpacity(0.7))),
           const SizedBox(height: 20),
-          ...list.map((a) => _Tile(item: a)),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 38,
-            child: OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.border),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          if (list.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: AppColors.surfaceLow, borderRadius: BorderRadius.circular(12)),
+              child: Column(
+                children: [
+                  const Icon(Icons.history_rounded, size: 28, color: AppColors.onSurfaceVariant),
+                  const SizedBox(height: 6),
+                  const Text('No activity yet',
+                      style: TextStyle(fontFamily: 'Manrope', fontSize: 13, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  Text('Enroll students, enter marks or change settings and it will show up here.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: AppColors.onSurfaceVariant.withOpacity(0.7))),
+                ],
               ),
-              onPressed: () {},
-              child: const Text('VIEW ALL ACTIVITY',
-                  style: TextStyle(fontFamily: 'Lexend', fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: AppColors.primary)),
-            ),
-          ),
+            )
+          else
+            ...list.take(5).map((a) => _Tile(item: a)),
         ],
       ),
     );
@@ -57,29 +72,57 @@ class RecentActivityPanel extends StatelessWidget {
 }
 
 class _Tile extends StatelessWidget {
-  final ActivityItem item;
+  final ActivityEvent item;
   const _Tile({required this.item});
+
+  (IconData, Color) get _visual {
+    switch (item.kind) {
+      case 'enrollment':
+        return (Icons.person_add_alt_1_rounded, const Color(0xFF2E7D32));
+      case 'mark':
+        return (Icons.edit_note_rounded, AppColors.primary);
+      case 'config':
+        return (Icons.tune_rounded, const Color(0xFFF57F17));
+      default:
+        return (Icons.notifications_outlined, AppColors.onSurfaceVariant);
+    }
+  }
+
+  String get _timeAgo {
+    final diff = DateTime.now().difference(item.createdAt);
+    if (diff.inMinutes < 1) return 'JUST NOW';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} MIN AGO';
+    if (diff.inHours < 24) return '${diff.inHours} H AGO';
+    if (diff.inDays < 7) return '${diff.inDays} D AGO';
+    return '${item.createdAt.day}/${item.createdAt.month}/${item.createdAt.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final (icon, color) = _visual;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 36,
             height: 36,
-            decoration: BoxDecoration(color: item.iconBgColor, borderRadius: BorderRadius.circular(8)),
-            child: Icon(item.icon, size: 18, color: item.iconColor),
+            decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+            child: Icon(icon, size: 18, color: color),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.title, style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.onSurface, height: 1.4)),
+                Text(item.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.onSurface, height: 1.4)),
                 const SizedBox(height: 3),
-                Text(item.timeAgo, style: TextStyle(fontFamily: 'Lexend', fontSize: 10.5, color: AppColors.onSurfaceVariant.withOpacity(0.55), letterSpacing: 0.3)),
+                Text(_timeAgo,
+                    style: TextStyle(fontFamily: 'Lexend', fontSize: 10.5, color: AppColors.onSurfaceVariant.withOpacity(0.55), letterSpacing: 0.3)),
               ],
             ),
           ),

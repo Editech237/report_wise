@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/shimmer.dart';
 
 /// Static pass-rate chart — mouse interactivity disabled to avoid
 /// fl_chart 0.69 + Flutter 3.44 mouse_tracker re-entrancy bug.
@@ -13,22 +14,16 @@ import '../../../core/theme/app_colors.dart';
 /// rebuilds under rapid mouse movement. Disabling touch eliminates
 /// the crash and keeps the dashboard fully clickable.
 class PassRateChart extends StatelessWidget {
-  final Map<String, int>? data; // label → percent
+  final Map<String, int>? data; // label → pass rate %
+  final bool loading;
 
-  const PassRateChart({super.key, this.data});
+  const PassRateChart({super.key, this.data, this.loading = false});
 
   List<_Entry> get _entries {
     if (data != null && data!.isNotEmpty) {
       return data!.entries.map((e) => _Entry(e.key, e.value)).toList();
     }
-    return const [
-      _Entry('Form 1', 88),
-      _Entry('6ème', 82),
-      _Entry('Form 5', 91),
-      _Entry('3ème', 74),
-      _Entry('Lower 6', 86),
-      _Entry('1ère C', 79),
-    ];
+    return const [];
   }
 
   static const _target = 75.0;
@@ -36,6 +31,23 @@ class PassRateChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const ShimmerBlock(height: 18, width: 300),
+            const SizedBox(height: 8),
+            const ShimmerBlock(height: 12, width: 200),
+            const SizedBox(height: 24),
+            const ShimmerBlock(height: 300),
+          ],
+        ),
+      );
+    }
+
     final entries = _entries;
     return Container(
       padding: const EdgeInsets.all(24),
@@ -49,10 +61,10 @@ class PassRateChart extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Pass Rate per Form / Niveau',
+                    Text('Pass Rate per Class',
                         style: TextStyle(fontFamily: 'Manrope', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
                     SizedBox(height: 4),
-                    Text('Comparison of performance metrics for the current sequence',
+                    Text('Latest sequence results · pass mark 10/20',
                         style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: Color(0xFF7A7A8A))),
                   ],
                 ),
@@ -65,6 +77,26 @@ class PassRateChart extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
+          if (entries.isEmpty)
+            Container(
+              height: 220,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: AppColors.surfaceLow, borderRadius: BorderRadius.circular(12)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.bar_chart_rounded, size: 32, color: AppColors.onSurfaceVariant),
+                  const SizedBox(height: 8),
+                  const Text('No results yet',
+                      style: TextStyle(fontFamily: 'Manrope', fontSize: 14, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  Text('Compute class results (Academic → Results) to see real pass rates.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: AppColors.onSurfaceVariant.withOpacity(0.7))),
+                ],
+              ),
+            )
+          else
           // Isolate chart repaint; fixed height avoids unbounded constraints inside Row+Expanded
           RepaintBoundary(
             child: SizedBox(

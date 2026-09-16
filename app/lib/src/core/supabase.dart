@@ -13,8 +13,9 @@ Future<void> initSupabase() async {
     url: AppConfig.supabaseUrl,
     publishableKey: AppConfig.supabaseAnonKey,
     authOptions: const FlutterAuthClientOptions(
-      persistSession: false,
-      localStorage: EmptyLocalStorage(),
+      // Persist the session (SharedPreferences by default) so users stay signed
+      // in across app launches until their token expires.
+      persistSession: true,
     ),
   );
 }

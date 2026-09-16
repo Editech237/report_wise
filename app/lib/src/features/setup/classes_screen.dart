@@ -2,8 +2,10 @@ import 'package:academic_engine/academic_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/theme/app_colors.dart';
 import '../../data/entities.dart';
 import '../../data/repositories/academic_repository.dart';
+import '../../core/widgets/shimmer.dart';
 
 /// Admin module: list the school's classes for the current academic year,
 /// create new ones (full hierarchy + subject set), edit or inactivate them.
@@ -177,7 +179,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return const ShimmerPanel();
           }
           if (snapshot.hasError) {
             return _ErrorPane(
@@ -199,6 +201,11 @@ class _ClassesScreenState extends State<ClassesScreen> {
                     label: Text(data.year.name),
                   ),
                   const Spacer(),
+                  IconButton(
+                    tooltip: 'Refresh',
+                    onPressed: _refresh,
+                    icon: const Icon(Icons.refresh_rounded),
+                  ),
                   FilledButton.icon(
                     onPressed: _create,
                     icon: const Icon(Icons.add),
@@ -494,8 +501,11 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
     return widget.educationTypes.isEmpty ? '' : widget.educationTypes.first.id;
   }
 
-  List<Cycle> get _cyclesForType =>
-      widget.cycles.where((c) => c.educationTypeId == _educationTypeId).toList();
+  List<Cycle> get _cyclesForType => widget.cycles
+      .where((c) =>
+          c.educationTypeId == _educationTypeId &&
+          (c.subsystem == null || c.subsystem == _subsystem))
+      .toList();
 
   List<Level> get _levelsForSelection {
     if (_cycleId == null) return const [];
@@ -621,9 +631,35 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (isEdit)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentAmberLight,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.accentAmber.withOpacity(0.3)),
+                    ),
+                    child: const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline_rounded, size: 16, color: AppColors.accentAmber),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Level, series and specialty cannot be changed after creation '
+                            '(they drive the curriculum). Edit the name and room here — '
+                            'create a new class to change the academic path.',
+                            style: TextStyle(fontFamily: 'Lexend', fontSize: 12, height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 _dropdown(
                   label: 'Education type',
                   value: _educationTypeId,
+                  enabled: !isEdit,
                   items: _educationTypeOptions.map((code) {
                     final et = widget.educationTypes.where((e) => e.code == code).toList();
                     final match = et.isEmpty ? null : et.first;
@@ -645,6 +681,7 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                 _dropdown(
                   label: 'Sub-system',
                   value: _subsystem,
+                  enabled: !isEdit,
                   items: _subsystemOptions.map((s) => (s, s)).toList(),
                   onChanged: _subsystemOptions.length == 1
                       ? null
@@ -659,8 +696,9 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                 _dropdown(
                   label: 'Cycle',
                   value: _cycleId,
+                  enabled: !isEdit,
                   items: _cyclesForType
-                      .map((c) => (c.id, '${c.name} (${c.code})'))
+                      .map((c) => (c.id, '${c.name} (${c.code})${c.subsystem != null ? ' · ${c.subsystem}' : ''}'))
                       .toList(),
                   onChanged: (v) => setState(() {
                     _cycleId = v;
@@ -672,6 +710,7 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                 _dropdown(
                   label: 'Level',
                   value: _levelId,
+                  enabled: !isEdit,
                   items:
                       _levelsForSelection.map((l) => (l.id, l.name)).toList(),
                   onChanged: (v) {
@@ -686,6 +725,7 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                 _dropdown(
                   label: 'Series (optional)',
                   value: _seriesId,
+                  enabled: !isEdit,
                   items: [
                     (null, '— None —'),
                     ..._seriesForType.map((s) => (s.id, '${s.name} (${s.code})')),
@@ -702,6 +742,7 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                   _dropdown(
                     label: 'Specialty',
                     value: _specialtyId,
+                    enabled: !isEdit,
                     items: [
                       (null, '— None —'),
                       ..._specialtiesForSeries
@@ -798,6 +839,33 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                     ),
                   ],
                 ],
+                if (isEdit) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLow,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.menu_book_outlined, size: 16, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Subjects and coefficients follow the level / series '
+                            'curriculum. Manage them in Subjects.',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 12,
+                              color: AppColors.onSurfaceVariant.withOpacity(0.8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -828,17 +896,25 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
     required String? value,
     required List<(String?, String)> items,
     required ValueChanged<String?>? onChanged,
+    bool enabled = true,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: DropdownButtonFormField<String?>(
         key: ObjectKey('${value ?? ''}::$label'),
         initialValue: value,
-        decoration: InputDecoration(labelText: label),
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
+        ),
         items: items
             .map((it) => DropdownMenuItem(value: it.$1, child: Text(it.$2)))
             .toList(),
-        onChanged: onChanged,
+        onChanged: enabled ? onChanged : null,
       ),
     );
   }

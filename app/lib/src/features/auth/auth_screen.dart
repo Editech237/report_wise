@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/providers/repository_providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/auth_widgets.dart';
-import '../../data/repositories/auth_repository.dart';
 
-/// Polished split-screen auth — keeps ReportWise green palette but borrows the
-/// clean, modern layout from academic_architech_cm with subtle animations.
-class AuthScreen extends StatefulWidget {
-  final AuthRepository auth;
-  const AuthScreen({super.key, required this.auth});
+class AuthScreen extends ConsumerStatefulWidget {
+  const AuthScreen({super.key});
 
   @override
-  State<AuthScreen> createState() => _AuthScreenState();
+  ConsumerState<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin {
+class _AuthScreenState extends ConsumerState<AuthScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _fullName = TextEditingController();
   final _email = TextEditingController();
@@ -31,10 +30,15 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _anim = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
     _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
-    _slide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic));
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic));
     _anim.forward();
   }
 
@@ -57,55 +61,67 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       _error = null;
       _needsConfirmation = false;
     });
+    final auth = ref.read(authRepositoryProvider);
+    if (auth == null) {
+      setState(() => _error = 'Auth not configured');
+      setState(() => _busy = false);
+      return;
+    }
     try {
       if (_signUp) {
-        final response = await widget.auth.signUp(
+        final response = await auth.signUp(
           email: _email.text.trim(),
           password: _password.text,
           fullName: _fullName.text.trim(),
         );
         if (!mounted) return;
-        // Supabase with email confirmations enabled returns user but no session
         if (response.user != null && response.session == null) {
           setState(() {
             _needsConfirmation = true;
             _error =
                 'Account created for ${response.user!.email ?? _email.text.trim()}. Check your inbox for a confirmation link, then sign in. If you do not see it, check spam or tap Resend.';
           });
-          // Stay on sign-up mode so user sees the resend option
           return;
         }
-        // If session present, AuthGate will auto-navigate; no manual switch needed
         if (response.session != null) return;
         setState(() {
           _needsConfirmation = true;
-          _error = 'Account created. Check your inbox for a confirmation link, then sign in.';
+          _error =
+              'Account created. Check your inbox for a confirmation link, then sign in.';
         });
       } else {
-        await widget.auth.signIn(email: _email.text.trim(), password: _password.text);
-        // Success -> AuthGate (auth state stream) will route to SchoolsGate -> onboarding if no membership
+        await auth.signIn(
+          email: _email.text.trim(),
+          password: _password.text,
+        );
       }
     } on AuthException catch (e) {
       if (!mounted) return;
       final msg = e.message.toLowerCase();
       final code = (e.code ?? '').toLowerCase();
-      debugPrint('AuthException code=$code message=${e.message} statusCode=${e.statusCode}');
+      debugPrint(
+        'AuthException code=$code message=${e.message} statusCode=${e.statusCode}',
+      );
       String friendly = e.message;
       bool needsConfirm = false;
 
-      if (msg.contains('email not confirmed') || msg.contains('email_not_confirmed') || code.contains('email_not_confirmed')) {
-        friendly = 'Email not confirmed. Check your inbox for the confirmation link we sent to ${_email.text.trim()}.';
+      if (msg.contains('email not confirmed') ||
+          msg.contains('email_not_confirmed') ||
+          code.contains('email_not_confirmed')) {
+        friendly =
+            'Email not confirmed. Check your inbox for the confirmation link we sent to ${_email.text.trim()}.';
         needsConfirm = true;
-      } else if (msg.contains('invalid login credentials') || msg.contains('invalid credentials') || code.contains('invalid_credentials')) {
-        // Could be wrong password OR unconfirmed email depending on Supabase settings.
-        // We treat as invalid credentials but hint about confirmation.
+      } else if (msg.contains('invalid login credentials') ||
+          msg.contains('invalid credentials') ||
+          code.contains('invalid_credentials')) {
         friendly =
             'Invalid email or password. If you just registered, confirm your email first (check inbox/spam). Otherwise verify your password.';
-        // If Supabase is in confirm-email mode, this same message appears for unconfirmed users
-        // So we offer resend as well to avoid dead-end.
+
         needsConfirm = true;
-      } else if (msg.contains('user already registered') || msg.contains('already exists')) {
-        friendly = 'An account with this email already exists. Try signing in instead.';
+      } else if (msg.contains('user already registered') ||
+          msg.contains('already exists')) {
+        friendly =
+            'An account with this email already exists. Try signing in instead.';
       } else if (msg.contains('password should be at least 6')) {
         friendly = 'Password must be at least 6 characters.';
       }
@@ -115,7 +131,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         _needsConfirmation = needsConfirm;
       });
     } catch (e) {
-      if (mounted) setState(() => _error = 'Something went wrong. Please try again. ($e)');
+      if (mounted)
+        setState(() => _error = 'Something went wrong. Please try again. ($e)');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -127,12 +144,19 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       return;
     }
     setState(() => _busy = true);
+    final auth = ref.read(authRepositoryProvider);
+    if (auth == null) {
+      setState(() => _error = 'Auth not configured');
+      setState(() => _busy = false);
+      return;
+    }
     try {
-      await widget.auth.resendConfirmation(email: _email.text.trim());
+      await auth.resendConfirmation(email: _email.text.trim());
       if (mounted) {
         setState(() {
           _canResend = false;
-          _error = 'Confirmation email resent to ${_email.text.trim()}. Check inbox and spam.';
+          _error =
+              'Confirmation email resent to ${_email.text.trim()}. Check inbox and spam.';
           _needsConfirmation = true;
         });
         // Re-enable after 30s
@@ -146,6 +170,65 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       if (mounted) setState(() => _error = 'Could not resend. Try again. ($e)');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _forgotPassword() async {
+    final emailController = TextEditingController(text: _email.text.trim());
+    final email = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset password'),
+        content: TextField(
+          controller: emailController,
+          autofocus: true,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(
+            labelText: 'Email',
+            hintText: 'you@school.cm',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, emailController.text.trim()),
+            child: const Text('Send reset link'),
+          ),
+        ],
+      ),
+    );
+    emailController.dispose();
+    if (email == null || email.isEmpty || !mounted) return;
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final auth = ref.read(authRepositoryProvider);
+    if (auth == null) {
+      setState(() => _busy = false);
+      return;
+    }
+    try {
+      await auth.resetPassword(email: email);
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error =
+            'Reset link sent to $email. Check your inbox (and spam) to set a new password.';
+      });
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = e.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = 'Could not send the reset link. Try again.';
+      });
     }
   }
 
@@ -173,7 +256,6 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     final size = MediaQuery.of(context).size;
     return Row(
       children: [
-        // Left — branded illustration panel (keeps green palette)
         Expanded(
           flex: size.width > 1600 ? 2 : 1,
           child: Container(
@@ -221,7 +303,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                     color: Colors.white.withOpacity(0.12),
                                     borderRadius: BorderRadius.circular(24),
                                   ),
-                                  child: const Icon(Icons.school_rounded, size: 96, color: Colors.white),
+                                  child: const Icon(
+                                    Icons.school_rounded,
+                                    size: 96,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
@@ -258,7 +344,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 _buildFeatureRow(),
                 const SizedBox(height: 32),
                 Text(
-                  'REPORTWISE ©2026 — MINESEC ALIGNED',
+                  'REPORTWISE ©2026',
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 9,
@@ -279,7 +365,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 520),
               child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: size.width < 1300 ? 40 : 72, vertical: 48),
+                padding: EdgeInsets.symmetric(
+                  horizontal: size.width < 1300 ? 40 : 72,
+                  vertical: 48,
+                ),
                 child: FadeTransition(
                   opacity: _fade,
                   child: SlideTransition(
@@ -290,7 +379,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           AuthHeaderSection(
-                            title: _signUp ? 'Create your account' : 'Welcome Back',
+                            title: _signUp
+                                ? 'Create your account'
+                                : 'Welcome Back',
                             subtitle: _signUp
                                 ? 'Join hundreds of Cameroonian secondary schools managing academics with ReportWise.'
                                 : 'Please enter your credentials to access your dashboard.',
@@ -301,7 +392,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                             transitionBuilder: (child, anim) => FadeTransition(
                               opacity: anim,
                               child: SlideTransition(
-                                position: Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero).animate(anim),
+                                position: Tween<Offset>(
+                                  begin: const Offset(0, 0.04),
+                                  end: Offset.zero,
+                                ).animate(anim),
                                 child: child,
                               ),
                             ),
@@ -310,7 +404,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 if (_signUp) ...[
-                                  const AuthSectionTitle(icon: Icons.person_outline, title: 'PERSONAL IDENTITY'),
+                                  const AuthSectionTitle(
+                                    icon: Icons.person_outline,
+                                    title: 'PERSONAL IDENTITY',
+                                  ),
                                   const SizedBox(height: 12),
                                   AuthTextField(
                                     label: "FULL NAME",
@@ -318,11 +415,17 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                     icon: Icons.badge_outlined,
                                     controller: _fullName,
                                     textInputAction: TextInputAction.next,
-                                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Full name is required' : null,
+                                    validator: (v) =>
+                                        (v == null || v.trim().isEmpty)
+                                        ? 'Full name is required'
+                                        : null,
                                   ),
                                   const SizedBox(height: 20),
                                 ],
-                                const AuthSectionTitle(icon: Icons.lock_outline, title: 'ACCOUNT CREDENTIALS'),
+                                const AuthSectionTitle(
+                                  icon: Icons.lock_outline,
+                                  title: 'ACCOUNT CREDENTIALS',
+                                ),
                                 const SizedBox(height: 12),
                                 AuthTextField(
                                   label: "EMAIL ADDRESS",
@@ -334,43 +437,69 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                   autofillHints: const [AutofillHints.email],
                                   validator: (v) {
                                     final value = v?.trim() ?? '';
-                                    if (value.isEmpty) return 'Email is required';
-                                    if (!value.contains('@')) return 'Enter a valid email';
+                                    if (value.isEmpty)
+                                      return 'Email is required';
+                                    if (!value.contains('@'))
+                                      return 'Enter a valid email';
                                     return null;
                                   },
                                 ),
                                 const SizedBox(height: 16),
-                                AuthTextField(
-                                  label: "PASSWORD",
-                                  hint: "At least 6 characters",
-                                  icon: Icons.lock_outline,
-                                  controller: _password,
-                                  isPassword: true,
-                                  textInputAction: TextInputAction.done,
-                                  onSubmitted: (_) => _submit(),
-                                  validator: (v) => (v == null || v.length < 6) ? 'At least 6 characters' : null,
-                                ),
-                              ],
+AuthTextField(
+                                    label: "PASSWORD",
+                                    hint: "At least 6 characters",
+                                    icon: Icons.lock_outline,
+                                    controller: _password,
+                                    isPassword: true,
+                                    textInputAction: TextInputAction.done,
+                                    onSubmitted: (_) => _submit(),
+                                    validator: (v) => (v == null || v.length < 6)
+                                        ? 'At least 6 characters'
+                                        : null,
+                                  ),
+                                  if (!_signUp)
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: TextButton(
+                                        onPressed: _busy ? null : _forgotPassword,
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: AppColors.primary,
+                                        ),
+                                        child: const Text('Forgot password?'),
+                                      ),
+                                    ),
+                                ],
                             ),
                           ),
                           if (_error != null) ...[
                             const SizedBox(height: 16),
                             AnimatedContainer(
                               duration: const Duration(milliseconds: 250),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
                               decoration: BoxDecoration(
-                                color: _isSuccessMsg ? AppColors.accentGreenLight : AppColors.accentRedLight,
+                                color: _isSuccessMsg
+                                    ? AppColors.accentGreenLight
+                                    : AppColors.accentRedLight,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: _isSuccessMsg ? AppColors.accentGreen.withOpacity(0.2) : AppColors.accentRed.withOpacity(0.2),
+                                  color: _isSuccessMsg
+                                      ? AppColors.accentGreen.withOpacity(0.2)
+                                      : AppColors.accentRed.withOpacity(0.2),
                                 ),
                               ),
                               child: Row(
                                 children: [
                                   Icon(
-                                    _isSuccessMsg ? Icons.check_circle_outline : Icons.error_outline,
+                                    _isSuccessMsg
+                                        ? Icons.check_circle_outline
+                                        : Icons.error_outline,
                                     size: 18,
-                                    color: _isSuccessMsg ? AppColors.accentGreen : AppColors.accentRed,
+                                    color: _isSuccessMsg
+                                        ? AppColors.accentGreen
+                                        : AppColors.accentRed,
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
@@ -379,7 +508,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                       style: TextStyle(
                                         fontFamily: 'Lexend',
                                         fontSize: 12.5,
-                                        color: _isSuccessMsg ? AppColors.accentGreen : AppColors.accentRed,
+                                        color: _isSuccessMsg
+                                            ? AppColors.accentGreen
+                                            : AppColors.accentRed,
                                         height: 1.4,
                                       ),
                                     ),
@@ -393,13 +524,28 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                 children: [
                                   Expanded(
                                     child: OutlinedButton.icon(
-                                      onPressed: _busy || !_canResend ? null : _resend,
-                                      icon: const Icon(Icons.mail_outline, size: 16),
-                                      label: Text(_canResend ? 'Resend confirmation' : 'Sent — check inbox'),
+                                      onPressed: _busy || !_canResend
+                                          ? null
+                                          : _resend,
+                                      icon: const Icon(
+                                        Icons.mail_outline,
+                                        size: 16,
+                                      ),
+                                      label: Text(
+                                        _canResend
+                                            ? 'Resend confirmation'
+                                            : 'Sent — check inbox',
+                                      ),
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: AppColors.primary,
-                                        side: const BorderSide(color: AppColors.border),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        side: const BorderSide(
+                                          color: AppColors.border,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -408,7 +554,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                               const SizedBox(height: 4),
                               Text(
                                 'After confirming, tap Sign in. Schools onboarding appears automatically when you have no school yet.',
-                                style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: AppColors.onSurfaceVariant.withOpacity(0.6), height: 1.4),
+                                style: TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 11,
+                                  color: AppColors.onSurfaceVariant.withOpacity(
+                                    0.6,
+                                  ),
+                                  height: 1.4,
+                                ),
                               ),
                             ],
                           ],
@@ -427,14 +580,25 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                   ? const SizedBox(
                                       height: 20,
                                       width: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
                                     )
                                   : Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        Text(_signUp ? 'Create account' : 'Sign in'),
+                                        Text(
+                                          _signUp
+                                              ? 'Create account'
+                                              : 'Sign in',
+                                        ),
                                         const SizedBox(width: 8),
-                                        const Icon(Icons.arrow_forward_rounded, size: 18),
+                                        const Icon(
+                                          Icons.arrow_forward_rounded,
+                                          size: 18,
+                                        ),
                                       ],
                                     ),
                             ),
@@ -444,19 +608,28 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                _signUp ? 'Already have an account?' : "Don't have an account yet?",
+                                _signUp
+                                    ? 'Already have an account?'
+                                    : "Don't have an account yet?",
                                 style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 13,
-                                  color: AppColors.onSurfaceVariant.withOpacity(0.7),
+                                  color: AppColors.onSurfaceVariant.withOpacity(
+                                    0.7,
+                                  ),
                                 ),
                               ),
                               TextButton(
                                 onPressed: _busy ? null : _toggleMode,
-                                style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
+                                ),
                                 child: Text(
                                   _signUp ? 'Sign in' : 'Create account',
-                                  style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+                                  style: const TextStyle(
+                                    fontFamily: 'Lexend',
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ],
@@ -468,7 +641,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 11,
-                                color: AppColors.onSurfaceVariant.withOpacity(0.45),
+                                color: AppColors.onSurfaceVariant.withOpacity(
+                                  0.45,
+                                ),
                               ),
                             ),
                           ),
@@ -485,16 +660,20 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     );
   }
 
-  bool get _isSuccessMsg => _error != null && _error!.toLowerCase().contains('check your inbox');
+  bool get _isSuccessMsg =>
+      _error != null && _error!.toLowerCase().contains('check your inbox');
 
   Widget _buildFeatureRow() {
     return Row(
       children: [
         _FeatureChip(icon: Icons.verified_outlined, label: 'MINESEC\nAligned'),
         const SizedBox(width: 12),
-        _FeatureChip(icon: Icons.offline_bolt_outlined, label: 'Offline\nReady'),
+        _FeatureChip(
+          icon: Icons.offline_bolt_outlined,
+          label: 'Offline\nReady',
+        ),
         const SizedBox(width: 12),
-        _FeatureChip(icon: Icons.calculate_outlined, label: 'Coefficients\n/20'),
+        _FeatureChip(icon: Icons.calculate_outlined, label: 'Mordern'),
       ],
     );
   }
@@ -516,7 +695,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                     color: Colors.white.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(Icons.school_rounded, color: Colors.white, size: 32),
+                  child: const Icon(
+                    Icons.school_rounded,
+                    color: Colors.white,
+                    size: 32,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 const Text(
@@ -578,7 +761,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                           hint: 'Your full name',
                           icon: Icons.person_outline,
                           controller: _fullName,
-                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Required'
+                              : null,
                         ),
                         const SizedBox(height: 16),
                       ],
@@ -603,22 +788,38 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         controller: _password,
                         isPassword: true,
                         onSubmitted: (_) => _submit(),
-                        validator: (v) => (v == null || v.length < 6) ? 'At least 6 characters' : null,
+                        validator: (v) => (v == null || v.length < 6)
+                            ? 'At least 6 characters'
+                            : null,
                       ),
+                      if (!_signUp)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _busy ? null : _forgotPassword,
+                            child: const Text('Forgot password?'),
+                          ),
+                        ),
                       if (_error != null) ...[
                         const SizedBox(height: 16),
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: _isSuccessMsg ? AppColors.accentGreenLight : AppColors.accentRedLight,
+                            color: _isSuccessMsg
+                                ? AppColors.accentGreenLight
+                                : AppColors.accentRedLight,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Text(_error!,
-                              style: TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 12,
-                                color: _isSuccessMsg ? AppColors.accentGreen : AppColors.accentRed,
-                              )),
+                          child: Text(
+                            _error!,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 12,
+                              color: _isSuccessMsg
+                                  ? AppColors.accentGreen
+                                  : AppColors.accentRed,
+                            ),
+                          ),
                         ),
                         if (_needsConfirmation) ...[
                           const SizedBox(height: 12),
@@ -627,7 +828,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                             child: OutlinedButton.icon(
                               onPressed: _busy || !_canResend ? null : _resend,
                               icon: const Icon(Icons.mail_outline, size: 16),
-                              label: Text(_canResend ? 'Resend confirmation' : 'Sent — check inbox'),
+                              label: Text(
+                                _canResend
+                                    ? 'Resend confirmation'
+                                    : 'Sent — check inbox',
+                              ),
                             ),
                           ),
                         ],
@@ -641,7 +846,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
                               : Text(_signUp ? 'Create account' : 'Sign in'),
                         ),
                       ),
@@ -650,8 +859,13 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            _signUp ? 'Already have an account?' : "Don't have an account?",
-                            style: const TextStyle(fontFamily: 'Lexend', fontSize: 13),
+                            _signUp
+                                ? 'Already have an account?'
+                                : "Don't have an account?",
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 13,
+                            ),
                           ),
                           TextButton(
                             onPressed: _toggleMode,

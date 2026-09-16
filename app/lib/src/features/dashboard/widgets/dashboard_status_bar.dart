@@ -5,7 +5,12 @@ import '../../../core/theme/app_colors.dart';
 class DashboardStatusBar extends StatelessWidget {
   final String statusLabel;
   final String deadlineLabel;
-  const DashboardStatusBar({super.key, this.statusLabel = 'In Session: Sequence 2 Evaluation', this.deadlineLabel = 'General Assembly: Friday, 10th Oct'});
+
+  const DashboardStatusBar({
+    super.key,
+    this.statusLabel = 'Academic year in session',
+    this.deadlineLabel = 'Finalize results to generate report cards',
+  });
 
   @override
   Widget build(BuildContext context) {

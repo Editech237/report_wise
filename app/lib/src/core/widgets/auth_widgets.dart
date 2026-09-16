@@ -109,6 +109,7 @@ class AuthTextField extends StatefulWidget {
   final String? Function(String?)? validator;
   final TextInputAction? textInputAction;
   final void Function(String)? onSubmitted;
+  final ValueChanged<String>? onChanged;
   final List<String>? autofillHints;
 
   const AuthTextField({
@@ -122,6 +123,7 @@ class AuthTextField extends StatefulWidget {
     this.validator,
     this.textInputAction,
     this.onSubmitted,
+    this.onChanged,
     this.autofillHints,
   });
 
@@ -161,6 +163,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
           validator: widget.validator,
           textInputAction: widget.textInputAction,
           onFieldSubmitted: widget.onSubmitted,
+          onChanged: widget.onChanged,
           autofillHints: widget.autofillHints,
           style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, color: AppColors.onSurface),
           decoration: InputDecoration(

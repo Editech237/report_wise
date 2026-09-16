@@ -6,6 +6,10 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   final String? schoolName;
   final VoidCallback? onGenerateReports;
   final VoidCallback? onSearchTap;
+  final ValueChanged<String>? onSearchChanged;
+  final VoidCallback? onNotificationsTap;
+  final VoidCallback? onHelpTap;
+  final String? schoolLogoUrl;
   final String? userName;
   final VoidCallback? onProfileTap;
 
@@ -14,6 +18,10 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
     this.schoolName,
     this.onGenerateReports,
     this.onSearchTap,
+    this.onSearchChanged,
+    this.onNotificationsTap,
+    this.onHelpTap,
+    this.schoolLogoUrl,
     this.userName,
     this.onProfileTap,
   });
@@ -41,42 +49,38 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
                   color: AppColors.surfaceLow,
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: InkWell(
-                  onTap: onSearchTap,
-                  borderRadius: BorderRadius.circular(24),
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 14),
-                      Icon(
-                        Icons.search_rounded,
-                        size: 18,
-                        color: AppColors.onSurfaceVariant.withOpacity(0.5),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          enabled: false,
-                          decoration: InputDecoration(
-                            hintText: 'Search students, classes, or subjects…',
-                            hintStyle: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 13,
-                              color: AppColors.onSurfaceVariant.withOpacity(
-                                0.55,
-                              ),
-                            ),
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                          style: const TextStyle(
+                child: Row(
+                  children: [
+                    const SizedBox(width: 14),
+                    Icon(
+                      Icons.search_rounded,
+                      size: 18,
+                      color: AppColors.onSurfaceVariant.withOpacity(0.5),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        onTap: onSearchTap,
+                        onChanged: onSearchChanged,
+                        textInputAction: TextInputAction.search,
+                        decoration: InputDecoration(
+                          hintText: 'Search students, classes, or subjects…',
+                          hintStyle: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 13,
+                            color: AppColors.onSurfaceVariant.withOpacity(0.55),
                           ),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -87,9 +91,9 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
           _IconBtn(
             icon: Icons.notifications_outlined,
             badge: true,
-            onTap: () {},
+            onTap: onNotificationsTap ?? () {},
           ),
-          _IconBtn(icon: Icons.help_outline_rounded, onTap: () {}),
+          _IconBtn(icon: Icons.help_outline_rounded, onTap: onHelpTap ?? () {}),
 
           // CTA — flexible to prevent Row overflow on narrow windows
           Flexible(
@@ -141,11 +145,17 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
                 CircleAvatar(
                   radius: 20,
                   backgroundColor: AppColors.primary.withOpacity(0.10),
-                  child: const Icon(
-                    Icons.person_rounded,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
+                  backgroundImage:
+                      schoolLogoUrl == null || schoolLogoUrl!.isEmpty
+                      ? null
+                      : NetworkImage(schoolLogoUrl!),
+                  child: schoolLogoUrl == null || schoolLogoUrl!.isEmpty
+                      ? const Icon(
+                          Icons.school_rounded,
+                          color: AppColors.primary,
+                          size: 20,
+                        )
+                      : null,
                 ),
                 if (userName != null) ...[
                   const SizedBox(width: 10),

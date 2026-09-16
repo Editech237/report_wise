@@ -5,6 +5,7 @@ enum AppSection {
   studentRegistry,
   teacherRegistry,
   academicRecords,
+  marks,
   reportCards,
   classes,
   subjects,
@@ -22,6 +23,8 @@ extension AppSectionX on AppSection {
         return 'Teachers';
       case AppSection.academicRecords:
         return 'Academic';
+      case AppSection.marks:
+        return 'Mark entry';
       case AppSection.reportCards:
         return 'Reports';
       case AppSection.classes:
@@ -43,6 +46,8 @@ extension AppSectionX on AppSection {
         return Icons.groups_outlined;
       case AppSection.academicRecords:
         return Icons.calendar_view_day_outlined;
+      case AppSection.marks:
+        return Icons.edit_note_outlined;
       case AppSection.reportCards:
         return Icons.description_outlined;
       case AppSection.classes:
@@ -64,6 +69,8 @@ extension AppSectionX on AppSection {
         return Icons.groups_rounded;
       case AppSection.academicRecords:
         return Icons.calendar_view_day_rounded;
+      case AppSection.marks:
+        return Icons.edit_note_rounded;
       case AppSection.reportCards:
         return Icons.description_rounded;
       case AppSection.classes:
