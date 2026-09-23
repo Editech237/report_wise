@@ -90,10 +90,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
               'Account created. Check your inbox for a confirmation link, then sign in.';
         });
       } else {
-        await auth.signIn(
-          email: _email.text.trim(),
-          password: _password.text,
-        );
+        await auth.signIn(email: _email.text.trim(), password: _password.text);
       }
     } on AuthException catch (e) {
       if (!mounted) return;
@@ -189,7 +186,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, emailController.text.trim()),
             child: const Text('Send reset link'),
@@ -303,10 +303,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                     color: Colors.white.withOpacity(0.12),
                                     borderRadius: BorderRadius.circular(24),
                                   ),
-                                  child: const Icon(
-                                    Icons.school_rounded,
-                                    size: 96,
-                                    color: Colors.white,
+                                  child: Image.asset(
+                                    'assets/images/reportwise_icon.png',
+                                    width: 96,
+                                    height: 96,
                                   ),
                                 ),
                               ),
@@ -445,30 +445,30 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                   },
                                 ),
                                 const SizedBox(height: 16),
-AuthTextField(
-                                    label: "PASSWORD",
-                                    hint: "At least 6 characters",
-                                    icon: Icons.lock_outline,
-                                    controller: _password,
-                                    isPassword: true,
-                                    textInputAction: TextInputAction.done,
-                                    onSubmitted: (_) => _submit(),
-                                    validator: (v) => (v == null || v.length < 6)
-                                        ? 'At least 6 characters'
-                                        : null,
-                                  ),
-                                  if (!_signUp)
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: TextButton(
-                                        onPressed: _busy ? null : _forgotPassword,
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: AppColors.primary,
-                                        ),
-                                        child: const Text('Forgot password?'),
+                                AuthTextField(
+                                  label: "PASSWORD",
+                                  hint: "At least 6 characters",
+                                  icon: Icons.lock_outline,
+                                  controller: _password,
+                                  isPassword: true,
+                                  textInputAction: TextInputAction.done,
+                                  onSubmitted: (_) => _submit(),
+                                  validator: (v) => (v == null || v.length < 6)
+                                      ? 'At least 6 characters'
+                                      : null,
+                                ),
+                                if (!_signUp)
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: _busy ? null : _forgotPassword,
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: AppColors.primary,
                                       ),
+                                      child: const Text('Forgot password?'),
                                     ),
-                                ],
+                                  ),
+                              ],
                             ),
                           ),
                           if (_error != null) ...[
@@ -695,10 +695,10 @@ AuthTextField(
                     color: Colors.white.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(
-                    Icons.school_rounded,
-                    color: Colors.white,
-                    size: 32,
+                  child: Image.asset(
+                    'assets/images/reportwise_icon.png',
+                    width: 32,
+                    height: 32,
                   ),
                 ),
                 const SizedBox(height: 16),

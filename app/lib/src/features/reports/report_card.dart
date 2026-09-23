@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../data/entities.dart';
+import '../../core/school_labels.dart';
 
 /// Data needed to render a Cameroonian report card (bulletin de notes).
 /// Built from an immutable PeriodResult + school/class/period context, so the
 /// rendered card always reflects the snapshot that produced the results.
 class ReportCardData {
+  final SchoolLabels labels;
   final String schoolName;
   final String? schoolAddress;
   final String? logoUrl;
@@ -41,6 +43,7 @@ class ReportCardData {
   final List<String> sequenceLabels;
 
   ReportCardData({
+    this.labels = const SchoolLabels('BILINGUAL'),
     required this.schoolName,
     this.schoolAddress,
     this.logoUrl,
@@ -100,13 +103,16 @@ class ReportSubjectRow {
 }
 
 /// Cameroon appreciation from a general average (out of 20).
-String appreciationFor(double avg) {
-  if (avg >= 18) return 'Excellent';
-  if (avg >= 16) return 'Très bien';
-  if (avg >= 14) return 'Bien';
-  if (avg >= 12) return 'Assez bien';
-  if (avg >= 10) return 'Passable';
-  return 'Insuffisant';
+String appreciationFor(
+  double avg, {
+  SchoolLabels labels = const SchoolLabels('FRANCOPHONE'),
+}) {
+  if (avg >= 18) return labels.text('Excellent', 'Excellent');
+  if (avg >= 16) return labels.text('Very good', 'Très bien');
+  if (avg >= 14) return labels.text('Good', 'Bien');
+  if (avg >= 12) return labels.text('Fairly good', 'Assez bien');
+  if (avg >= 10) return labels.text('Pass', 'Passable');
+  return labels.text('Insufficient', 'Insuffisant');
 }
 
 /// Builds report data from a stored PeriodResult (the immutable snapshot).
@@ -123,6 +129,7 @@ ReportCardData buildReportCardData({
   List<String> sequenceLabels = const ['Seq. 1', 'Seq. 2'],
 }) {
   final avg = result.generalAverage;
+  final labels = SchoolLabels.forClass(school.subsystem, cls.subsystem);
   final subjects = result.subjects
       .map(
         (s) => ReportSubjectRow(
@@ -134,19 +141,20 @@ ReportCardData buildReportCardData({
           rank: s.rankInSubject,
           remark: s.subjectAverage == null
               ? '-'
-              : appreciationFor(s.subjectAverage!),
+              : appreciationFor(s.subjectAverage!, labels: labels),
           sequenceAverages: subjectSequenceAverages[s.subjectId] ?? const [],
         ),
       )
       .toList();
   return ReportCardData(
+    labels: labels,
     schoolName: school.name,
     schoolAddress: school.address,
     logoUrl: school.logoUrl,
     principalName: school.principalName,
     principalSignatureUrl: school.principalSignatureUrl,
     academicYearName: academicYearName,
-    periodLabel: periodLabel,
+    periodLabel: labels.period(periodLabel),
     studentName: result.studentName,
     matricule: result.matricule,
     dateOfBirth: student?.dateOfBirth,
@@ -164,11 +172,11 @@ ReportCardData buildReportCardData({
     totalCoefficients: result.totalCoefficients,
     classAverage: result.classAverage,
     rank: result.rank,
-    appreciation: avg == null ? '—' : appreciationFor(avg),
+    appreciation: avg == null ? '—' : appreciationFor(avg, labels: labels),
     numberOfSubjects: subjects.length,
     numberOfPassed: subjects.where((s) => (s.average ?? 0) >= 10).length,
     subjects: subjects,
-    sequenceLabels: sequenceLabels,
+    sequenceLabels: sequenceLabels.map(labels.period).toList(),
   );
 }
 
@@ -195,8 +203,8 @@ class ReportCardWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'RÉPUBLIQUE DU CAMEROUN',
+          Text(
+            d.labels.text('REPUBLIC OF CAMEROON', 'RÉPUBLIQUE DU CAMEROUN'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
@@ -204,23 +212,24 @@ class ReportCardWidget extends StatelessWidget {
               letterSpacing: 1.5,
             ),
           ),
-          const Text(
-            'Paix - Travail - Patrie',
+          Text(
+            d.labels.text(
+              'Peace - Work - Fatherland',
+              'Paix - Travail - Patrie',
+            ),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'MINISTÈRE DES ENSEIGNEMENTS SECONDAIRES',
+          Text(
+            d.labels.text(
+              'MINISTRY OF SECONDARY EDUCATION',
+              'MINISTÈRE DES ENSEIGNEMENTS SECONDAIRES',
+            ),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 10),
           ),
           const SizedBox(height: 2),
-          const Text(
-            'MINISTRY OF SECONDARY EDUCATION',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 9),
-          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -267,7 +276,7 @@ class ReportCardWidget extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'BULLETIN DE NOTES / REPORT CARD',
+            d.labels.text('REPORT CARD', 'BULLETIN DE NOTES'),
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
           ),
@@ -287,31 +296,57 @@ class ReportCardWidget extends StatelessWidget {
               spacing: 22,
               runSpacing: 4,
               children: [
-                _info('Nom / Name', d.studentName),
-                if (d.matricule != null) _info('Matricule', d.matricule!),
+                _info(d.labels.text('Name', 'Nom'), d.studentName),
+                if (d.matricule != null)
+                  _info(d.labels.text('Student ID', 'Matricule'), d.matricule!),
                 _info(
-                  'Date de naissance',
+                  d.labels.text('Date of birth', 'Date de naissance'),
                   d.dateOfBirth == null ? '-' : _fmtDate(d.dateOfBirth!),
                 ),
                 if (d.placeOfBirth != null)
-                  _info('Lieu de naissance', d.placeOfBirth!),
+                  _info(
+                    d.labels.text('Place of birth', 'Lieu de naissance'),
+                    d.placeOfBirth!,
+                  ),
                 if (d.guardianName != null)
-                  _info('Parent / Tuteur', d.guardianName!),
+                  _info(
+                    d.labels.text('Parent / Guardian', 'Parent / Tuteur'),
+                    d.guardianName!,
+                  ),
                 if (d.guardianPhone != null)
-                  _info('Contact parent', d.guardianPhone!),
+                  _info(
+                    d.labels.text('Guardian contact', 'Contact parent'),
+                    d.guardianPhone!,
+                  ),
                 _info(
-                  'Redoublant / Repeater',
-                  d.repeater ? 'Oui / Yes' : 'Non / No',
+                  d.labels.text('Repeater', 'Redoublant'),
+                  d.repeater
+                      ? d.labels.text('Yes', 'Oui')
+                      : d.labels.text('No', 'Non'),
                 ),
-                if (d.gender != null) _info('Sexe / Gender', d.gender!),
-                _info('Classe / Class', d.className),
-                if (d.seriesName != null) _info('Série', d.seriesName!),
+                if (d.gender != null)
+                  _info(d.labels.text('Gender', 'Sexe'), d.gender!),
+                _info(d.labels.text('Class', 'Classe'), d.className),
+                if (d.seriesName != null)
+                  _info(d.labels.text('Series', 'Série'), d.seriesName!),
                 if (d.specialtyName != null)
-                  _info('Spécialité', d.specialtyName!),
-                _info('Nb matières', '${d.numberOfSubjects}'),
-                _info('Nb réussites', '${d.numberOfPassed}'),
+                  _info(
+                    d.labels.text('Specialty', 'Spécialité'),
+                    d.specialtyName!,
+                  ),
+                _info(
+                  d.labels.text('Subjects', 'Matières'),
+                  '${d.numberOfSubjects}',
+                ),
+                _info(
+                  d.labels.text('Subjects passed', 'Matières réussies'),
+                  '${d.numberOfPassed}',
+                ),
                 if (d.classMasterName != null)
-                  _info('Professeur principal', d.classMasterName!),
+                  _info(
+                    d.labels.text('Class teacher', 'Professeur principal'),
+                    d.classMasterName!,
+                  ),
               ],
             ),
           ),
@@ -334,7 +369,7 @@ class ReportCardWidget extends StatelessWidget {
               TableRow(
                 decoration: const BoxDecoration(color: Color(0xFFE8E8E8)),
                 children: [
-                  _cell('SUBJECT NAME\nDISCIPLINE', bold: true),
+                  _cell(d.labels.text('SUBJECT', 'DISCIPLINE'), bold: true),
                   _cell(
                     d.sequenceLabels.elementAtOrNull(0) ?? 'Seq. X',
                     bold: true,
@@ -345,12 +380,28 @@ class ReportCardWidget extends StatelessWidget {
                     bold: true,
                     center: true,
                   ),
-                  _cell('AVERAGE\nMOY. TR.', bold: true, center: true),
+                  _cell(
+                    d.labels.text('AVERAGE', 'MOYENNE'),
+                    bold: true,
+                    center: true,
+                  ),
                   _cell('Coef', bold: true, center: true),
                   _cell('TOTAL\nAV X C', bold: true, center: true),
-                  _cell('POS.\nRANG', bold: true, center: true),
-                  _cell('TEACHER\nNAME', bold: true, center: true),
-                  _cell("TEACHER'S REMARK", bold: true, center: true),
+                  _cell(
+                    d.labels.text('RANK', 'RANG'),
+                    bold: true,
+                    center: true,
+                  ),
+                  _cell(
+                    d.labels.text('TEACHER', 'PROFESSEUR'),
+                    bold: true,
+                    center: true,
+                  ),
+                  _cell(
+                    d.labels.text('REMARK', 'APPRÉCIATION'),
+                    bold: true,
+                    center: true,
+                  ),
                 ],
               ),
               for (var i = 0; i < d.subjects.length; i++)
@@ -413,18 +464,22 @@ class ReportCardWidget extends StatelessWidget {
           Row(
             children: [
               _avgBox(
-                'Moyenne Générale / General Average',
+                d.labels.text('General average', 'Moyenne générale'),
                 d.generalAverage,
                 flex: 2,
               ),
               _avgBox(
-                'Moyenne de la classe / Class Average',
+                d.labels.text('Class average', 'Moyenne de la classe'),
                 d.classAverage,
                 flex: 2,
               ),
-              _avgBox('Rang / Rank', d.rank?.toDouble(), flex: 1),
               _avgBox(
-                'Appréciation / Appreciation',
+                d.labels.text('Rank', 'Rang'),
+                d.rank?.toDouble(),
+                flex: 1,
+              ),
+              _avgBox(
+                d.labels.text('Appreciation', 'Appréciation'),
                 null,
                 text: d.appreciation,
                 flex: 2,
@@ -433,14 +488,14 @@ class ReportCardWidget extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Appréciations / Comments',
+            d.labels.text('Comments', 'Appréciations'),
             style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
-          for (final label in const [
-            'Le Professeur / Teacher:',
-            'Le Professeur Principal / Class Teacher:',
-            'Le Chef d\'Établissement / Principal:',
+          for (final label in [
+            d.labels.text('Teacher:', 'Le professeur :'),
+            d.labels.text('Class teacher:', 'Le professeur principal :'),
+            d.labels.text('Principal:', 'Le chef d\'établissement :'),
           ])
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -448,12 +503,12 @@ class ReportCardWidget extends StatelessWidget {
             ),
           const SizedBox(height: 8),
           Row(
-            children: const [
+            children: [
               Expanded(
                 child: Column(
                   children: [
                     Text(
-                      'Le Professeur',
+                      d.labels.text('Teacher', 'Le professeur'),
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
@@ -468,7 +523,7 @@ class ReportCardWidget extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      'Le Professeur Principal',
+                      d.labels.text('Class teacher', 'Le professeur principal'),
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
@@ -483,7 +538,7 @@ class ReportCardWidget extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      'Le Chef d\'Établissement',
+                      d.labels.text('Principal', 'Le chef d\'établissement'),
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
@@ -491,7 +546,7 @@ class ReportCardWidget extends StatelessWidget {
                     ),
                     SizedBox(height: 28),
                     Text(
-                      'Signature & Tampon / Stamp',
+                      d.labels.text('Signature & Stamp', 'Signature et tampon'),
                       style: TextStyle(fontSize: 9),
                     ),
                   ],
@@ -545,16 +600,19 @@ class ReportCardWidget extends StatelessWidget {
 
   Widget _disciplinaryRecord(ReportCardData d) {
     final rows = <(String, int)>[
-      ("No. of absences / Nr. d'absences", d.absences),
-      ('Disciplinary council / Conseil disciplinaire', d.disciplinaryCouncils),
-      ('Warning / Avertissement', d.warnings),
+      (d.labels.text('Absences', 'Absences'), d.absences),
+      (
+        d.labels.text('Disciplinary councils', 'Conseils disciplinaires'),
+        d.disciplinaryCouncils,
+      ),
+      (d.labels.text('Warnings', 'Avertissements'), d.warnings),
       ('Suspension', d.suspensions),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'DISCIPLINARY RECORD / DOSSIER DISCIPLINAIRE',
+        Text(
+          d.labels.text('DISCIPLINARY RECORD', 'DOSSIER DISCIPLINAIRE'),
           style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 4),

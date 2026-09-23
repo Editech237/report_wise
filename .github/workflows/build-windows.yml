@@ -32,10 +32,14 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows release
+        # Compiles the WinRT OCR bridge against the Windows SDK.
         run: >-
           flutter build windows --release
           --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}
           --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Test application
+        run: flutter test --no-pub
 
       - name: Package Windows release
         run: >-

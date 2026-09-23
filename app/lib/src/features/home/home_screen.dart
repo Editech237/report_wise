@@ -19,10 +19,10 @@ class HomeScreen extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             children: [
               const SizedBox(height: 48),
-              Icon(
-                Icons.school_rounded,
-                size: 72,
-                color: Theme.of(context).colorScheme.primary,
+              Image.asset(
+                'assets/images/reportwise_icon.png',
+                width: 72,
+                height: 72,
               ),
               const SizedBox(height: 16),
               Text(
@@ -58,7 +58,12 @@ class _EngineDemoCard extends StatelessWidget {
       name: 'Demo',
       components: [
         AssessmentComponent(
-            id: 'exam', name: 'Exam', componentType: 'EXAM', weight: 1.0, maxScore: 20),
+          id: 'exam',
+          name: 'Exam',
+          componentType: 'EXAM',
+          weight: 1.0,
+          maxScore: 20,
+        ),
       ],
       source: ConfigSource.nationalDefault,
     );
@@ -67,11 +72,23 @@ class _EngineDemoCard extends StatelessWidget {
       scheme: scheme,
       subjects: const [
         SubjectConfig(
-            subjectId: 'MATHS', code: 'MATHS', name: 'Mathematics', coefficient: 5),
+          subjectId: 'MATHS',
+          code: 'MATHS',
+          name: 'Mathematics',
+          coefficient: 5,
+        ),
         SubjectConfig(
-            subjectId: 'PHY', code: 'PHY', name: 'Physics', coefficient: 4),
+          subjectId: 'PHY',
+          code: 'PHY',
+          name: 'Physics',
+          coefficient: 4,
+        ),
         SubjectConfig(
-            subjectId: 'ENG', code: 'ENG', name: 'English', coefficient: 2),
+          subjectId: 'ENG',
+          code: 'ENG',
+          name: 'English',
+          coefficient: 2,
+        ),
       ],
       marks: const [
         ComponentMark(subjectId: 'MATHS', componentId: 'exam', score: 14),
@@ -92,19 +109,23 @@ class _EngineDemoCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Grading engine smoke test',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Grading engine smoke test',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
-            ...result.subjects.map((s) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  title: Text(s.config.name),
-                  trailing: Text(
-                    '${s.subjectAverage?.toStringAsFixed(2) ?? '—'} × '
-                    '${s.config.coefficient.toStringAsFixed(1)} = '
-                    '${s.weightedPoints?.toStringAsFixed(2) ?? '—'}',
-                  ),
-                )),
+            ...result.subjects.map(
+              (s) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: Text(s.config.name),
+                trailing: Text(
+                  '${s.subjectAverage?.toStringAsFixed(2) ?? '—'} × '
+                  '${s.config.coefficient.toStringAsFixed(1)} = '
+                  '${s.weightedPoints?.toStringAsFixed(2) ?? '—'}',
+                ),
+              ),
+            ),
             const Divider(),
             ListTile(
               contentPadding: EdgeInsets.zero,

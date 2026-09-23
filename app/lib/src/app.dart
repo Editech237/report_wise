@@ -6,6 +6,7 @@ import 'core/providers/supabase_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/launch/brand_onboarding_screen.dart';
 import 'features/shell/schools_gate.dart';
 
 /// ReportWise — Cameroon Secondary School Management Platform.
@@ -26,14 +27,14 @@ class ReportWiseApp extends ConsumerWidget {
         title: 'ReportWise',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const HomeScreen(),
+        home: const FirstLaunchGate(child: HomeScreen()),
       );
     }
     return MaterialApp(
       title: 'ReportWise',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const AuthGate(),
+      home: const FirstLaunchGate(child: AuthGate()),
     );
   }
 }

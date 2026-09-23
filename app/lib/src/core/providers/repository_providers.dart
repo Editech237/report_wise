@@ -3,6 +3,8 @@ import '../../data/repositories/academic_repository.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/school_repository.dart';
 import '../../data/repositories/student_repository.dart';
+import '../../data/repositories/teacher_repository.dart';
+import '../../data/repositories/reports_repository.dart';
 import 'supabase_provider.dart';
 
 final authRepositoryProvider = Provider<AuthRepository?>((ref) {
@@ -27,4 +29,16 @@ final studentRepositoryProvider = Provider<StudentRepository?>((ref) {
   final client = ref.watch(supabaseClientProvider);
   if (client == null) return null;
   return StudentRepository(client);
+});
+
+final teacherRepositoryProvider = Provider<TeacherRepository?>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  if (client == null) return null;
+  return TeacherRepository(client);
+});
+
+final reportsRepositoryProvider = Provider<ReportsRepository?>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  if (client == null) return null;
+  return ReportsRepository(client);
 });

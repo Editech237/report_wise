@@ -11,7 +11,12 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onHelpTap;
   final String? schoolLogoUrl;
   final String? userName;
+  final String userRole;
   final VoidCallback? onProfileTap;
+  final bool showSearch;
+  final bool showNotifications;
+  final bool showHelp;
+  final bool showGenerateReports;
 
   const AppTopBar({
     super.key,
@@ -23,7 +28,12 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
     this.onHelpTap,
     this.schoolLogoUrl,
     this.userName,
+    this.userRole = 'Administrator',
     this.onProfileTap,
+    this.showSearch = true,
+    this.showNotifications = true,
+    this.showHelp = true,
+    this.showGenerateReports = true,
   });
 
   @override
@@ -39,101 +49,110 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Search
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 420),
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLow,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 14),
-                    Icon(
-                      Icons.search_rounded,
-                      size: 18,
-                      color: AppColors.onSurfaceVariant.withOpacity(0.5),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        onTap: onSearchTap,
-                        onChanged: onSearchChanged,
-                        textInputAction: TextInputAction.search,
-                        decoration: InputDecoration(
-                          hintText: 'Search students, classes, or subjects…',
-                          hintStyle: TextStyle(
+          if (showSearch)
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceLow,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 14),
+                      Icon(
+                        Icons.search_rounded,
+                        size: 18,
+                        color: AppColors.onSurfaceVariant.withOpacity(0.5),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          onTap: onSearchTap,
+                          onChanged: onSearchChanged,
+                          textInputAction: TextInputAction.search,
+                          decoration: InputDecoration(
+                            hintText: 'Search students, classes, or subjects…',
+                            hintStyle: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 13,
+                              color: AppColors.onSurfaceVariant.withOpacity(
+                                0.55,
+                              ),
+                            ),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                          style: const TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 13,
-                            color: AppColors.onSurfaceVariant.withOpacity(0.55),
                           ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 13,
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 16),
+          if (showSearch) const SizedBox(width: 16),
 
           // Icons
-          _IconBtn(
-            icon: Icons.notifications_outlined,
-            badge: true,
-            onTap: onNotificationsTap ?? () {},
-          ),
-          _IconBtn(icon: Icons.help_outline_rounded, onTap: onHelpTap ?? () {}),
+          if (showNotifications)
+            _IconBtn(
+              icon: Icons.notifications_outlined,
+              badge: true,
+              onTap: onNotificationsTap ?? () {},
+            ),
+          if (showHelp)
+            _IconBtn(
+              icon: Icons.help_outline_rounded,
+              onTap: onHelpTap ?? () {},
+            ),
 
           // CTA — flexible to prevent Row overflow on narrow windows
-          Flexible(
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(0, 38),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          if (showGenerateReports)
+            Flexible(
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(0, 38),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  textStyle: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
+                icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
+                label: const Text(
+                  'Generate Reports (PDF)',
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-                textStyle: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                ),
+                onPressed:
+                    onGenerateReports ??
+                    () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Report generation — coming soon'),
+                        ),
+                      );
+                    },
               ),
-              icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
-              label: const Text(
-                'Generate Reports (PDF)',
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-              onPressed:
-                  onGenerateReports ??
-                  () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Report generation — coming soon'),
-                      ),
-                    );
-                  },
             ),
-          ),
           const SizedBox(width: 30),
 
           // Avatar + name
@@ -173,7 +192,7 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
                         ),
                       ),
                       Text(
-                        'Administrator',
+                        userRole,
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 10.5,

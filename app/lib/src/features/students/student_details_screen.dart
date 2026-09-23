@@ -51,13 +51,20 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
 
   String _initials(String name) {
     if (name.trim().isEmpty) return '?';
-    return name.trim().split(' ').where((e) => e.isNotEmpty).take(2).map((e) => e[0].toUpperCase()).join();
+    return name
+        .trim()
+        .split(' ')
+        .where((e) => e.isNotEmpty)
+        .take(2)
+        .map((e) => e[0].toUpperCase())
+        .join();
   }
 
   Future<void> _edit() async {
     final draft = await showDialog<_DetailsDraft>(
       context: context,
-      builder: (_) => _DetailsEditDialog(existing: widget.row, classes: widget.classes),
+      builder: (_) =>
+          _DetailsEditDialog(existing: widget.row, classes: widget.classes),
     );
     if (draft == null || !mounted) return;
     try {
@@ -72,8 +79,13 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
         guardianPhone: draft.guardianPhone,
         repeater: draft.repeater,
       );
-      if (draft.classId != null && draft.classId != widget.row.classId && widget.row.enrollmentId != null) {
-        await _students.updateEnrollment(widget.row.enrollmentId!, classId: draft.classId!);
+      if (draft.classId != null &&
+          draft.classId != widget.row.classId &&
+          widget.row.enrollmentId != null) {
+        await _students.updateEnrollment(
+          widget.row.enrollmentId!,
+          classId: draft.classId!,
+        );
       } else if (draft.classId != null && widget.row.enrollmentId == null) {
         await _students.enroll(
           schoolId: widget.school.id,
@@ -83,11 +95,18 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
         );
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Student updated')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Student updated')));
       Navigator.pop(context, true);
     } on Exception catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update: $e'), backgroundColor: AppColors.accentRed));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not update: $e'),
+          backgroundColor: AppColors.accentRed,
+        ),
+      );
     }
   }
 
@@ -96,10 +115,18 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Delete student?'),
-        content: Text('Delete "${widget.row.student.fullName}"? This cannot be undone.'),
+        content: Text(
+          'Delete "${widget.row.student.fullName}"? This cannot be undone.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -110,7 +137,12 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
       Navigator.pop(context, true);
     } on Exception catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not delete: $e'), backgroundColor: AppColors.accentRed));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not delete: $e'),
+          backgroundColor: AppColors.accentRed,
+        ),
+      );
     }
   }
 
@@ -122,11 +154,22 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
-        title: const Text('Student profile', style: TextStyle(fontFamily: 'Manrope', fontWeight: FontWeight.w700)),
+        title: const Text(
+          'Student profile',
+          style: TextStyle(fontFamily: 'Manrope', fontWeight: FontWeight.w700),
+        ),
         actions: [
           if (widget.isAdmin) ...[
-            IconButton(icon: const Icon(Icons.edit_outlined), tooltip: 'Edit', onPressed: _edit),
-            IconButton(icon: const Icon(Icons.delete_outline), tooltip: 'Delete', onPressed: _delete),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit',
+              onPressed: _edit,
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Delete',
+              onPressed: _delete,
+            ),
           ],
         ],
       ),
@@ -144,16 +187,40 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                     CircleAvatar(
                       radius: 34,
                       backgroundColor: AppColors.primary.withOpacity(0.1),
-                      child: Text(_initials(s.fullName), style: const TextStyle(fontFamily: 'Manrope', fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                      child: Text(
+                        _initials(s.fullName),
+                        style: const TextStyle(
+                          fontFamily: 'Manrope',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(s.fullName, style: const TextStyle(fontFamily: 'Manrope', fontSize: 20, fontWeight: FontWeight.w800)),
+                          Text(
+                            s.fullName,
+                            style: const TextStyle(
+                              fontFamily: 'Manrope',
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                           const SizedBox(height: 4),
-                          Text(s.matricule ?? 'No matricule', style: TextStyle(fontFamily: 'Lexend', fontSize: 13, color: AppColors.onSurfaceVariant.withOpacity(0.7))),
+                          Text(
+                            s.matricule ?? 'No matricule',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 13,
+                              color: AppColors.onSurfaceVariant.withOpacity(
+                                0.7,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -180,7 +247,12 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                     title: 'Profile',
                     rows: [
                       ('Gender', s.gender ?? '—'),
-                      ('Date of birth', s.dateOfBirth == null ? '—' : '${s.dateOfBirth!.day}/${s.dateOfBirth!.month}/${s.dateOfBirth!.year}'),
+                      (
+                        'Date of birth',
+                        s.dateOfBirth == null
+                            ? '—'
+                            : '${s.dateOfBirth!.day}/${s.dateOfBirth!.month}/${s.dateOfBirth!.year}',
+                      ),
                       ('Place of birth', s.placeOfBirth ?? '—'),
                       ('Parent / guardian', s.guardianName ?? '—'),
                       ('Guardian phone', s.guardianPhone ?? '—'),
@@ -191,7 +263,14 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            Text('Recent results', style: const TextStyle(fontFamily: 'Manrope', fontSize: 16, fontWeight: FontWeight.w700)),
+            Text(
+              'Recent results',
+              style: const TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 12),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _resultsFuture,
@@ -205,7 +284,14 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                     margin: EdgeInsets.zero,
                     child: Padding(
                       padding: const EdgeInsets.all(20),
-                      child: Text('No results computed yet.', style: TextStyle(fontFamily: 'Lexend', fontSize: 13, color: AppColors.onSurfaceVariant.withOpacity(0.7))),
+                      child: Text(
+                        'No results computed yet.',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
+                          color: AppColors.onSurfaceVariant.withOpacity(0.7),
+                        ),
+                      ),
                     ),
                   );
                 }
@@ -216,14 +302,37 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                       for (final r in list)
                         ListTile(
                           dense: true,
-                          title: Text('${r['period_type'] ?? 'Period'}', style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600)),
-                          subtitle: Text(r['status'] == 'FINAL' ? 'Finalized' : 'Draft', style: const TextStyle(fontSize: 11)),
+                          title: Text(
+                            '${r['period_type'] ?? 'Period'}',
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            r['status'] == 'FINAL' ? 'Finalized' : 'Draft',
+                            style: const TextStyle(fontSize: 11),
+                          ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text('Rank ${r['rank'] ?? '—'}', style: const TextStyle(fontFamily: 'Lexend', fontSize: 12)),
+                              Text(
+                                'Rank ${r['rank'] ?? '—'}',
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 12,
+                                ),
+                              ),
                               const SizedBox(width: 12),
-                              Text(r['general_average']?.toString() ?? '—', style: const TextStyle(fontFamily: 'Lexend', fontSize: 14, fontWeight: FontWeight.w800)),
+                              Text(
+                                r['general_average']?.toString() ?? '—',
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -253,7 +362,14 @@ class _InfoCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontFamily: 'Manrope', fontSize: 14, fontWeight: FontWeight.w700)),
+            Text(
+              title,
+              style: const TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 12),
             for (final (k, v) in rows)
               Padding(
@@ -261,8 +377,24 @@ class _InfoCard extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('$k: ', style: TextStyle(fontFamily: 'Lexend', fontSize: 12.5, color: AppColors.onSurfaceVariant.withOpacity(0.7))),
-                    Expanded(child: Text(v, style: const TextStyle(fontFamily: 'Lexend', fontSize: 12.5, fontWeight: FontWeight.w600))),
+                    Text(
+                      '$k: ',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12.5,
+                        color: AppColors.onSurfaceVariant.withOpacity(0.7),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        v,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -307,7 +439,10 @@ class _DetailsEditDialog extends StatefulWidget {
 
 class _DetailsEditDialogState extends State<_DetailsEditDialog> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _name, _matricule, _placeOfBirth, _guardianName, _guardianPhone;
+  late final TextEditingController _name,
+      _placeOfBirth,
+      _guardianName,
+      _guardianPhone;
   DateTime? _dob;
   String? _gender;
   String? _classId;
@@ -318,7 +453,6 @@ class _DetailsEditDialogState extends State<_DetailsEditDialog> {
     super.initState();
     final s = widget.existing.student;
     _name = TextEditingController(text: s.fullName);
-    _matricule = TextEditingController(text: s.matricule ?? '');
     _placeOfBirth = TextEditingController(text: s.placeOfBirth ?? '');
     _guardianName = TextEditingController(text: s.guardianName ?? '');
     _guardianPhone = TextEditingController(text: s.guardianPhone ?? '');
@@ -331,7 +465,6 @@ class _DetailsEditDialogState extends State<_DetailsEditDialog> {
   @override
   void dispose() {
     _name.dispose();
-    _matricule.dispose();
     _placeOfBirth.dispose();
     _guardianName.dispose();
     _guardianPhone.dispose();
@@ -348,17 +481,38 @@ class _DetailsEditDialogState extends State<_DetailsEditDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextFormField(controller: _name, decoration: const InputDecoration(labelText: 'Full name *'),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null),
+            TextFormField(
+              controller: _name,
+              decoration: const InputDecoration(labelText: 'Full name *'),
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? 'Required' : null,
+            ),
             const SizedBox(height: 14),
-            TextFormField(controller: _matricule, decoration: const InputDecoration(labelText: 'Matricule (optional)')),
+            Text(
+              'Matricule: ${widget.existing.student.matricule ?? 'Generated on save'}',
+            ),
             const SizedBox(height: 14),
-            TextFormField(controller: _placeOfBirth, decoration: const InputDecoration(labelText: 'Place of birth (optional)')),
+            TextFormField(
+              controller: _placeOfBirth,
+              decoration: const InputDecoration(
+                labelText: 'Place of birth (optional)',
+              ),
+            ),
             const SizedBox(height: 14),
-            TextFormField(controller: _guardianName, decoration: const InputDecoration(labelText: 'Parent / guardian name (optional)')),
+            TextFormField(
+              controller: _guardianName,
+              decoration: const InputDecoration(
+                labelText: 'Parent / guardian name (optional)',
+              ),
+            ),
             const SizedBox(height: 14),
-            TextFormField(controller: _guardianPhone, keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Guardian phone (optional)')),
+            TextFormField(
+              controller: _guardianPhone,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Guardian phone (optional)',
+              ),
+            ),
             const SizedBox(height: 14),
             SwitchListTile(
               dense: true,
@@ -382,8 +536,13 @@ class _DetailsEditDialogState extends State<_DetailsEditDialog> {
               label: 'Class',
               value: _classId,
               items: [
-                const DropdownMenuItem(value: null, child: Text('Not enrolled yet')),
-                ...widget.classes.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
+                const DropdownMenuItem(
+                  value: null,
+                  child: Text('Not enrolled yet'),
+                ),
+                ...widget.classes.map(
+                  (c) => DropdownMenuItem(value: c.id, child: Text(c.name)),
+                ),
               ],
               onChanged: (v) => setState(() => _classId = v),
             ),
@@ -391,22 +550,34 @@ class _DetailsEditDialogState extends State<_DetailsEditDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
         AppModalButton(
           label: 'Save',
           onPressed: () {
             if (!_formKey.currentState!.validate()) return;
-            Navigator.pop(context, _DetailsDraft(
-              fullName: _name.text.trim(),
-              matricule: _matricule.text.trim().isEmpty ? null : _matricule.text.trim(),
-              placeOfBirth: _placeOfBirth.text.trim().isEmpty ? null : _placeOfBirth.text.trim(),
-              guardianName: _guardianName.text.trim().isEmpty ? null : _guardianName.text.trim(),
-              guardianPhone: _guardianPhone.text.trim().isEmpty ? null : _guardianPhone.text.trim(),
-              repeater: _repeater,
-              dateOfBirth: _dob,
-              gender: _gender,
-              classId: _classId,
-            ));
+            Navigator.pop(
+              context,
+              _DetailsDraft(
+                fullName: _name.text.trim(),
+                matricule: null,
+                placeOfBirth: _placeOfBirth.text.trim().isEmpty
+                    ? null
+                    : _placeOfBirth.text.trim(),
+                guardianName: _guardianName.text.trim().isEmpty
+                    ? null
+                    : _guardianName.text.trim(),
+                guardianPhone: _guardianPhone.text.trim().isEmpty
+                    ? null
+                    : _guardianPhone.text.trim(),
+                repeater: _repeater,
+                dateOfBirth: _dob,
+                gender: _gender,
+                classId: _classId,
+              ),
+            );
           },
         ),
       ],

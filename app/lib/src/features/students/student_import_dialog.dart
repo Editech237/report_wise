@@ -174,22 +174,11 @@ class _StudentImportDialogState extends State<StudentImportDialog> {
     setState(() => _busy = true);
     var imported = 0;
     try {
-      for (final row in valid) {
-        await widget.repository.create(
-          schoolId: widget.school.id,
-          fullName: row.name,
-          matricule: row.matricule,
-          dateOfBirth: row.dateOfBirth,
-          gender: row.gender,
-          placeOfBirth: row.placeOfBirth,
-          guardianName: row.guardianName,
-          guardianPhone: row.guardianPhone,
-          repeater: row.repeater,
-          classId: row.classId,
-          academicYearId: widget.year.id,
-        );
-        imported++;
-      }
+      imported = await widget.repository.importBatch(
+        schoolId: widget.school.id,
+        academicYearId: widget.year.id,
+        rows: valid.map((row) => row.toJson()).toList(),
+      );
       if (mounted) Navigator.pop(context, imported);
     } catch (e) {
       if (mounted)
@@ -220,7 +209,7 @@ class _StudentImportDialogState extends State<StudentImportDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Use CSV or Excel (.xlsx) with headers: full_name, matricule, date_of_birth, gender, place_of_birth, guardian_name, guardian_phone, class.',
+              'Use CSV or Excel (.xlsx) with headers: full_name, matricule (optional school ID), date_of_birth, gender, place_of_birth, guardian_name, guardian_phone, class. Missing matricules are generated automatically.',
             ),
             const SizedBox(height: 12),
             Row(
@@ -327,13 +316,28 @@ class _ImportRow {
     List<SchoolClass> classes,
     List<StudentWithEnrollment> existing,
   ) {
-    final name = m['full_name'] ?? m['name'] ?? '';
-    final className = m['class'] ?? m['class_name'];
+    final name =
+        _clean(m['full_name']) ??
+        _clean(m['name']) ??
+        [
+          _clean(m['first_name']),
+          _clean(m['last_name']),
+        ].whereType<String>().join(' ');
+    final className =
+        m['class'] ?? m['class_name'] ?? m['grade'] ?? m['level'] ?? m['form'];
     final cls = classes
         .where((c) => _norm(c.name) == _norm(className ?? ''))
         .firstOrNull;
-    final matricule = _clean(m['matricule']);
-    final dob = _parseDate(m['date_of_birth'] ?? m['dob'] ?? '');
+    final matricule = _clean(
+      m['matricule'] ??
+          m['student_id'] ??
+          m['studentid'] ??
+          m['admission_no'] ??
+          m['registration_no'],
+    );
+    final dob = _parseDate(
+      m['date_of_birth'] ?? m['birth_date'] ?? m['dob'] ?? '',
+    );
     final duplicate = existing.any(
       (e) =>
           (matricule != null && e.student.matricule == matricule) ||
@@ -353,7 +357,7 @@ class _ImportRow {
       name: name.trim(),
       matricule: matricule,
       dateOfBirth: dob,
-      gender: _clean(m['gender']),
+      gender: _clean(m['gender'] ?? m['sex']),
       placeOfBirth: _clean(m['place_of_birth']),
       guardianName: _clean(m['guardian_name']),
       guardianPhone: _clean(m['guardian_phone']),
@@ -364,6 +368,18 @@ class _ImportRow {
       duplicate: duplicate,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'full_name': name,
+    'matricule': matricule,
+    'date_of_birth': dateOfBirth?.toIso8601String().split('T').first,
+    'gender': gender,
+    'place_of_birth': placeOfBirth,
+    'guardian_name': guardianName,
+    'guardian_phone': guardianPhone,
+    'repeater': repeater,
+    'class_id': classId,
+  };
 }
 
 String? _clean(String? value) =>

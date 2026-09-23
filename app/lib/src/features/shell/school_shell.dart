@@ -7,7 +7,6 @@ import '../../core/providers/students_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_section.dart';
 import '../../data/entities.dart';
-import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/school_repository.dart';
 import '../academic/academic_screen.dart';
 import '../marks/mark_entry_screen.dart';
@@ -55,7 +54,29 @@ class _SchoolShellState extends ConsumerState<SchoolShell> {
         : AppSection.dashboard;
   }
 
+  @override
+  void didUpdateWidget(covariant SchoolShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final refreshed = widget.memberships
+        .where(
+          (m) =>
+              m.schoolId == _current.schoolId &&
+              m.profileId == _current.profileId,
+        )
+        .firstOrNull;
+    if (refreshed != null && refreshed != _current) {
+      setState(() => _current = refreshed);
+    } else if (refreshed == null && widget.memberships.isNotEmpty) {
+      setState(() => _current = widget.memberships.first);
+    }
+  }
+
   void _onSelect(AppSection s) {
+    if (_current.role.isTeacherRole &&
+        !_current.role.isAdminRole &&
+        s != AppSection.marks) {
+      return;
+    }
     setState(() => _section = s);
     if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
       Navigator.pop(context);
@@ -69,28 +90,12 @@ class _SchoolShellState extends ConsumerState<SchoolShell> {
     }
   }
 
-  void _showNotifications() => showDialog<void>(
-    context: context,
-    builder: (_) => const AlertDialog(
-      title: Text('Notifications'),
-      content: Text('You have no new notifications.'),
-    ),
-  );
-
-  void _showHelp() => showDialog<void>(
-    context: context,
-    builder: (_) => const AlertDialog(
-      title: Text('ReportWise help'),
-      content: Text(
-        'Use Students to search learners, Marks to enter scores, Academic → Results to compute and finalize results, and Reports to preview or export bulletins.',
-      ),
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 900;
     final client = ref.watch(supabaseClientProvider);
+    final teacherOnly =
+        _current.role.isTeacherRole && !_current.role.isAdminRole;
 
     final sidebar = AppSidebar(
       selected: _section,
@@ -111,12 +116,15 @@ class _SchoolShellState extends ConsumerState<SchoolShell> {
               client?.auth.currentUser?.userMetadata?['full_name']
                   ?.toString() ??
               client?.auth.currentUser?.email,
+          userRole: _current.role.isTeacherRole ? 'Teacher' : 'Administrator',
           onGenerateReports: () => _onSelect(AppSection.reportCards),
           onSearchTap: () => _openGlobalSearch(client!),
           onSearchChanged: _search,
-          onNotificationsTap: _showNotifications,
-          onHelpTap: _showHelp,
           onProfileTap: () => _onSelect(AppSection.settings),
+          showSearch: !teacherOnly,
+          showNotifications: false,
+          showHelp: false,
+          showGenerateReports: !teacherOnly,
         ),
         Container(height: 1, color: AppColors.divider),
         Expanded(
@@ -168,10 +176,10 @@ class _SchoolShellState extends ConsumerState<SchoolShell> {
                 color: AppColors.primary.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
-                Icons.school_rounded,
-                size: 18,
-                color: AppColors.primary,
+              child: Image.asset(
+                'assets/images/reportwise_icon.png',
+                width: 18,
+                height: 18,
               ),
             ),
             const SizedBox(width: 10),
@@ -373,6 +381,20 @@ class _Panel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isAdmin = membership.role.isAdminRole;
+    final teacherOnly = membership.role.isTeacherRole && !isAdmin;
+
+    if (teacherOnly && section != AppSection.marks) {
+      return MarkEntryScreen(
+        client: client,
+        school: school,
+        isAdmin: false,
+        currentMembershipId: membership.id,
+      );
+    }
+
+    if (!isAdmin && section == AppSection.settings) {
+      return const _AdminsOnly();
+    }
 
     switch (section) {
       case AppSection.dashboard:

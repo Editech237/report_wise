@@ -52,14 +52,22 @@ class _ResultsTabState extends State<ResultsTab> {
     _academic = AcademicRepository(widget.client);
     _results = ResultsRepository(widget.client);
     _baseFuture = _load();
-    _resultSetsFuture = _baseFuture.then((base) => _results.listPeriodResultSets(
-        schoolId: widget.school.id, academicYearId: base.year.id));
+    _resultSetsFuture = _baseFuture.then(
+      (base) => _results.listPeriodResultSets(
+        schoolId: widget.school.id,
+        academicYearId: base.year.id,
+      ),
+    );
   }
 
   void _refreshResultSets() {
     setState(() {
-      _resultSetsFuture = _baseFuture.then((base) => _results.listPeriodResultSets(
-          schoolId: widget.school.id, academicYearId: base.year.id));
+      _resultSetsFuture = _baseFuture.then(
+        (base) => _results.listPeriodResultSets(
+          schoolId: widget.school.id,
+          academicYearId: base.year.id,
+        ),
+      );
     });
   }
 
@@ -81,7 +89,9 @@ class _ResultsTabState extends State<ResultsTab> {
     final years = await _academic.academicYears(widget.school.id);
     final year = years.firstWhere(
       (y) => y.isCurrent,
-      orElse: () => years.isNotEmpty ? years.first : (throw StateError('No academic year')),
+      orElse: () => years.isNotEmpty
+          ? years.first
+          : (throw StateError('No academic year')),
     );
     final results = await Future.wait([
       _academic.classesFor(schoolId: widget.school.id, academicYearId: year.id),
@@ -121,7 +131,8 @@ class _ResultsTabState extends State<ResultsTab> {
   }
 
   Future<void> _compute() async {
-    if (_classId == null || (_periodType != 'ANNUAL' && _periodId == null)) return;
+    if (_classId == null || (_periodType != 'ANNUAL' && _periodId == null))
+      return;
     final base = await _baseFuture;
     final cls = base.classes.firstWhere((c) => c.id == _classId);
     final ctx = AcademicContext(
@@ -146,7 +157,41 @@ class _ResultsTabState extends State<ResultsTab> {
         throw StateError('No sequences for this period');
       }
       final config = _configFromRules(base.rules);
+      final subjects = setup.subjects
+          .map(
+            (s) => {
+              'subject_id': s.subjectId,
+              'coefficient': s.coefficient,
+              'counts_in_average': s.countsInAverage,
+              'counts_in_ranking': s.countsInRanking,
+              'shows_on_report': s.showsOnReport,
+            },
+          )
+          .toList();
+      final scheme = setup.scheme!.components
+          .map((c) => {'id': c.id, 'weight': c.weight, 'max_score': c.maxScore})
+          .toList();
 
+      // A TERM result is built from the two persisted SEQUENCE snapshots.
+      // Compute those snapshots first so Academic > Results and Reports use
+      // the same source of truth.
+      if (_periodType == 'TERM') {
+        for (final sequenceId in sequenceIds) {
+          await _results.computePeriodResults(
+            schoolId: widget.school.id,
+            classId: cls.id,
+            academicYearId: cls.academicYearId,
+            periodType: 'SEQUENCE',
+            periodId: sequenceId,
+            sequenceIds: [sequenceId],
+            subjects: subjects,
+            scheme: scheme,
+            policy: config.policy,
+            ranking: config.ranking,
+            display: config.display,
+          );
+        }
+      }
       await _results.computePeriodResults(
         schoolId: widget.school.id,
         classId: cls.id,
@@ -154,22 +199,8 @@ class _ResultsTabState extends State<ResultsTab> {
         periodType: _periodType,
         periodId: _periodType == 'ANNUAL' ? null : _periodId,
         sequenceIds: sequenceIds,
-        subjects: setup.subjects
-            .map((s) => {
-                  'subject_id': s.subjectId,
-                  'coefficient': s.coefficient,
-                  'counts_in_average': s.countsInAverage,
-                  'counts_in_ranking': s.countsInRanking,
-                  'shows_on_report': s.showsOnReport,
-                })
-            .toList(),
-        scheme: setup.scheme!.components
-            .map((c) => {
-                  'id': c.id,
-                  'weight': c.weight,
-                  'max_score': c.maxScore,
-                })
-            .toList(),
+        subjects: subjects,
+        scheme: scheme,
         policy: config.policy,
         ranking: config.ranking,
         display: config.display,
@@ -188,11 +219,19 @@ class _ResultsTabState extends State<ResultsTab> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Finalize results'),
-        content: const Text('Finalized results are immutable and feed report '
-            'cards. To change them later you must unfinalize (audited).'),
+        content: const Text(
+          'Finalized results are immutable and feed report '
+          'cards. To change them later you must unfinalize (audited).',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Finalize')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Finalize'),
+          ),
         ],
       ),
     );
@@ -245,7 +284,10 @@ class _ResultsTabState extends State<ResultsTab> {
               children: [
                 Text('Could not load results.'),
                 const SizedBox(height: 8),
-                Text('${snap.error}', style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  '${snap.error}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
                 const SizedBox(height: 12),
                 OutlinedButton(
                   onPressed: () => setState(() => _baseFuture = _load()),
@@ -273,9 +315,16 @@ class _ResultsTabState extends State<ResultsTab> {
                       initialValue: _classId,
                       decoration: const InputDecoration(labelText: 'Class'),
                       items: [
-                        const DropdownMenuItem(value: null, child: Text('— Select —')),
-                        ...base.classes.map((c) =>
-                            DropdownMenuItem(value: c.id, child: Text(c.name))),
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('— Select —'),
+                        ),
+                        ...base.classes.map(
+                          (c) => DropdownMenuItem(
+                            value: c.id,
+                            child: Text(c.name),
+                          ),
+                        ),
                       ],
                       onChanged: (v) {
                         setState(() => _classId = v);
@@ -289,7 +338,10 @@ class _ResultsTabState extends State<ResultsTab> {
                     child: SegmentedButton<String>(
                       showSelectedIcon: false,
                       segments: const [
-                        ButtonSegment(value: 'SEQUENCE', label: Text('Sequence')),
+                        ButtonSegment(
+                          value: 'SEQUENCE',
+                          label: Text('Sequence'),
+                        ),
                         ButtonSegment(value: 'TERM', label: Text('Term')),
                         ButtonSegment(value: 'ANNUAL', label: Text('Annual')),
                       ],
@@ -322,20 +374,38 @@ class _ResultsTabState extends State<ResultsTab> {
                       ),
                       items: switch (_periodType) {
                         'ANNUAL' => const [
-                            DropdownMenuItem(value: null, child: Text('Whole year')),
-                          ],
+                          DropdownMenuItem(
+                            value: null,
+                            child: Text('Whole year'),
+                          ),
+                        ],
                         'TERM' => [
-                            const DropdownMenuItem(value: null, child: Text('— Select —')),
-                            ...base.terms.map((t) =>
-                                DropdownMenuItem(value: t.id, child: Text(t.name))),
-                          ],
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('— Select —'),
+                          ),
+                          ...base.terms.map(
+                            (t) => DropdownMenuItem(
+                              value: t.id,
+                              child: Text(t.name),
+                            ),
+                          ),
+                        ],
                         _ => [
-                            const DropdownMenuItem(value: null, child: Text('— Select —')),
-                            ...base.sequences.map((s) => DropdownMenuItem(
-                                value: s.id,
-                                child: Text('${s.name} · [${s.status}]',
-                                    overflow: TextOverflow.ellipsis))),
-                          ],
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('— Select —'),
+                          ),
+                          ...base.sequences.map(
+                            (s) => DropdownMenuItem(
+                              value: s.id,
+                              child: Text(
+                                '${s.name} · [${s.status}]',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ],
                       },
                       onChanged: (v) {
                         setState(() => _periodId = v);
@@ -348,11 +418,16 @@ class _ResultsTabState extends State<ResultsTab> {
                     FilledButton.icon(
                       onPressed: _computing
                           ? null
-                          : (_classId != null && (_periodType == 'ANNUAL' || _periodId != null))
-                              ? _compute
-                              : null,
+                          : (_classId != null &&
+                                (_periodType == 'ANNUAL' || _periodId != null))
+                          ? _compute
+                          : null,
                       icon: _computing
-                          ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          ? const SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Icon(Icons.calculate_outlined, size: 18),
                       label: const Text('Compute'),
                     ),
@@ -374,7 +449,9 @@ class _ResultsTabState extends State<ResultsTab> {
   Widget _buildResults() {
     final results = _resultsFuture;
     if (results == null) {
-      return const Center(child: Text('Select a class and period to review results.'));
+      return const Center(
+        child: Text('Select a class and period to review results.'),
+      );
     }
     return FutureBuilder<List<PeriodResult>>(
       future: results,
@@ -388,9 +465,11 @@ class _ResultsTabState extends State<ResultsTab> {
         final list = snap.data!;
         if (list.isEmpty) {
           return Center(
-            child: Text(widget.isAdmin
-                ? 'No results yet — press Compute to generate them.'
-                : 'No results for this period.'),
+            child: Text(
+              widget.isAdmin
+                  ? 'No results yet — press Compute to generate them.'
+                  : 'No results for this period.',
+            ),
           );
         }
         final finalized = list.first.status == 'FINAL';
@@ -400,12 +479,16 @@ class _ResultsTabState extends State<ResultsTab> {
           children: [
             Row(
               children: [
-                Text('${list.length} students',
-                    style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  '${list.length} students',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
                 if (classAverage != null) ...[
                   const SizedBox(width: 12),
-                  Text('Class average: ${_fmt(classAverage)}',
-                      style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    'Class average: ${_fmt(classAverage)}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ],
                 const SizedBox(width: 12),
                 _StatusPill(finalized: finalized),
@@ -448,16 +531,24 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = finalized ? AppColors.accentGreen : AppColors.onSurfaceVariant;
+    final color = finalized
+        ? AppColors.accentGreen
+        : AppColors.onSurfaceVariant;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(99),
       ),
-      child: Text(finalized ? 'FINAL' : 'DRAFT',
-          style: TextStyle(
-              fontFamily: 'Lexend', fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+      child: Text(
+        finalized ? 'FINAL' : 'DRAFT',
+        style: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
     );
   }
 }
@@ -475,13 +566,28 @@ class _ResultCard extends StatelessWidget {
         leading: CircleAvatar(
           radius: 16,
           backgroundColor: AppColors.primary.withOpacity(0.1),
-          child: Text('${result.rank ?? '–'}',
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary)),
+          child: Text(
+            '${result.rank ?? '–'}',
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary,
+            ),
+          ),
         ),
-        title: Text(result.studentName,
-            style: const TextStyle(fontFamily: 'Manrope', fontSize: 14, fontWeight: FontWeight.w600)),
-        subtitle: Text(result.matricule ?? '',
-            style: Theme.of(context).textTheme.bodySmall),
+        title: Text(
+          result.studentName,
+          style: const TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          result.matricule ?? '',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -497,20 +603,39 @@ class _ResultCard extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(s.subjectName ?? s.subjectId,
-                        style: const TextStyle(fontFamily: 'Lexend', fontSize: 12.5)),
+                    child: Text(
+                      s.subjectName ?? s.subjectId,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12.5,
+                      ),
+                    ),
                   ),
-                  Text(s.subjectAverage == null ? '—' : _fmt(s.subjectAverage!),
-                      style: const TextStyle(fontSize: 12.5)),
+                  Text(
+                    s.subjectAverage == null ? '—' : _fmt(s.subjectAverage!),
+                    style: const TextStyle(fontSize: 12.5),
+                  ),
                   const SizedBox(width: 8),
-                  Text(s.coefficient == null ? '×—' : '×${_fmt(s.coefficient!)}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
+                  Text(
+                    s.coefficient == null ? '×—' : '×${_fmt(s.coefficient!)}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   SizedBox(
                     width: 56,
-                    child: Text(s.weightedPoints == null ? '= —' : '= ${_fmt(s.weightedPoints!)}',
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                    child: Text(
+                      s.weightedPoints == null
+                          ? '= —'
+                          : '= ${_fmt(s.weightedPoints!)}',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -533,9 +658,21 @@ class _Stat extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: AppColors.onSurfaceVariant)),
-        Text(value == null ? '–' : _fmt(value!),
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, fontFamily: 'Lexend')),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
+        Text(
+          value == null ? '–' : _fmt(value!),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            fontFamily: 'Lexend',
+          ),
+        ),
       ],
     );
   }
@@ -565,8 +702,10 @@ class _ReasonDialogState extends State<_ReasonDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('This action is audited — a reason is required.',
-              style: TextStyle(fontSize: 12.5)),
+          const Text(
+            'This action is audited — a reason is required.',
+            style: TextStyle(fontSize: 12.5),
+          ),
           const SizedBox(height: 12),
           TextField(
             controller: _reason,
@@ -577,7 +716,10 @@ class _ReasonDialogState extends State<_ReasonDialog> {
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
         FilledButton(
           onPressed: () {
             if (_reason.text.trim().isEmpty) return;
@@ -608,8 +750,12 @@ class _Base {
 
 /// Builds the policy / ranking / display config JSON handed to the RPC,
 /// resolved from the school's academic rules (school override wins).
-({Map<String, Object?> policy, Map<String, Object?> ranking, Map<String, Object?> display})
-    _configFromRules(List<AcademicRule> rules) {
+({
+  Map<String, Object?> policy,
+  Map<String, Object?> ranking,
+  Map<String, Object?> display,
+})
+_configFromRules(List<AcademicRule> rules) {
   Map<String, dynamic>? by(String key) {
     AcademicRule? found;
     for (final r in rules) {
@@ -629,8 +775,15 @@ class _Base {
 
   return (
     policy: {
-      'exclude': (policyRule?['exclude'] as List?) ??
-          const ['NOT_ENTERED', 'ABSENT', 'EXCUSED', 'NOT_APPLICABLE', 'PENDING'],
+      'exclude':
+          (policyRule?['exclude'] as List?) ??
+          const [
+            'NOT_ENTERED',
+            'ABSENT',
+            'EXCUSED',
+            'NOT_APPLICABLE',
+            'PENDING',
+          ],
       'zero_is_score': policyRule?['zero_is_score'] ?? true,
     },
     ranking: {
@@ -669,8 +822,14 @@ class _ResultSetsStrip extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Computed results (${sets.length})',
-                style: const TextStyle(fontFamily: 'Manrope', fontSize: 14, fontWeight: FontWeight.w700)),
+            Text(
+              'Computed results (${sets.length})',
+              style: const TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 8),
             SizedBox(
               height: 84,
@@ -678,7 +837,8 @@ class _ResultSetsStrip extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 itemCount: sets.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 10),
-                itemBuilder: (context, i) => _ResultSetCard(set: sets[i], onTap: () => onOpen(sets[i])),
+                itemBuilder: (context, i) =>
+                    _ResultSetCard(set: sets[i], onTap: () => onOpen(sets[i])),
               ),
             ),
             const SizedBox(height: 16),
@@ -697,7 +857,9 @@ class _ResultSetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = set.isFinal ? AppColors.accentGreen : AppColors.onSurfaceVariant;
+    final color = set.isFinal
+        ? AppColors.accentGreen
+        : AppColors.onSurfaceVariant;
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
@@ -710,20 +872,42 @@ class _ResultSetCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(set.className,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontFamily: 'Manrope', fontSize: 13, fontWeight: FontWeight.w700)),
-              Text('${set.periodLabel} · ${set.studentCount} students',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontFamily: 'Lexend', fontSize: 11.5, color: AppColors.onSurfaceVariant)),
+              Text(
+                set.className,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                '${set.periodLabel} · ${set.studentCount} students',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 11.5,
+                  color: AppColors.onSurfaceVariant,
+                ),
+              ),
               const SizedBox(height: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(99)),
-                child: Text(set.isFinal ? 'FINAL' : 'DRAFT',
-                    style: TextStyle(fontFamily: 'Lexend', fontSize: 10.5, fontWeight: FontWeight.w700, color: color)),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text(
+                  set.isFinal ? 'FINAL' : 'DRAFT',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
               ),
             ],
           ),

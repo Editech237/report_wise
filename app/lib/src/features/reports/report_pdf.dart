@@ -56,16 +56,22 @@ Future<pw.ThemeData> _pdfTheme() async {
 
 Future<pw.MemoryImage?> _networkImage(String? url) async {
   if (url == null || url.trim().isEmpty) return null;
+  final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
   try {
-    final client = HttpClient();
-    final response = await (await client.getUrl(Uri.parse(url))).close();
+    final response = await (await client.getUrl(
+      Uri.parse(url),
+    )).close().timeout(const Duration(seconds: 10));
     if (response.statusCode != 200) return null;
     final bytes = <int>[];
-    await for (final chunk in response) bytes.addAll(chunk);
-    client.close();
+    await for (final chunk in response.timeout(const Duration(seconds: 10))) {
+      bytes.addAll(chunk);
+      if (bytes.length > 10 * 1024 * 1024) return null;
+    }
     return pw.MemoryImage(Uint8List.fromList(bytes));
   } catch (_) {
     return null;
+  } finally {
+    client.close(force: true);
   }
 }
 
@@ -83,7 +89,7 @@ pw.Widget _buildPage(
       crossAxisAlignment: pw.CrossAxisAlignment.stretch,
       children: [
         pw.Text(
-          'RÉPUBLIQUE DU CAMEROUN',
+          d.labels.text('REPUBLIC OF CAMEROON', 'RÉPUBLIQUE DU CAMEROUN'),
           textAlign: pw.TextAlign.center,
           style: pw.TextStyle(
             fontSize: 13,
@@ -92,20 +98,18 @@ pw.Widget _buildPage(
           ),
         ),
         pw.Text(
-          'Paix - Travail - Patrie',
+          d.labels.text('Peace - Work - Fatherland', 'Paix - Travail - Patrie'),
           textAlign: pw.TextAlign.center,
           style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 4),
         pw.Text(
-          'MINISTÈRE DES ENSEIGNEMENTS SECONDAIRES',
+          d.labels.text(
+            'MINISTRY OF SECONDARY EDUCATION',
+            'MINISTÈRE DES ENSEIGNEMENTS SECONDAIRES',
+          ),
           textAlign: pw.TextAlign.center,
           style: const pw.TextStyle(fontSize: 9),
-        ),
-        pw.Text(
-          'MINISTRY OF SECONDARY EDUCATION',
-          textAlign: pw.TextAlign.center,
-          style: const pw.TextStyle(fontSize: 8.5),
         ),
         pw.SizedBox(height: 8),
         if (logo != null)
@@ -130,7 +134,7 @@ pw.Widget _buildPage(
           ),
         pw.SizedBox(height: 8),
         pw.Text(
-          'BULLETIN DE NOTES / REPORT CARD',
+          d.labels.text('REPORT CARD', 'BULLETIN DE NOTES'),
           textAlign: pw.TextAlign.center,
           style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
         ),
@@ -149,28 +153,57 @@ pw.Widget _buildPage(
             spacing: 20,
             runSpacing: 2,
             children: [
-              _info('Nom / Name', d.studentName),
-              if (d.matricule != null) _info('Matricule', d.matricule!),
+              _info(d.labels.text('Name', 'Nom'), d.studentName),
+              if (d.matricule != null)
+                _info(d.labels.text('Student ID', 'Matricule'), d.matricule!),
               _info(
-                'Date de naissance',
+                d.labels.text('Date of birth', 'Date de naissance'),
                 d.dateOfBirth == null ? '-' : _fmtDate(d.dateOfBirth!),
               ),
               if (d.placeOfBirth != null)
-                _info('Lieu de naissance', d.placeOfBirth!),
+                _info(
+                  d.labels.text('Place of birth', 'Lieu de naissance'),
+                  d.placeOfBirth!,
+                ),
               if (d.guardianName != null)
-                _info('Parent / Tuteur', d.guardianName!),
+                _info(
+                  d.labels.text('Parent / Guardian', 'Parent / Tuteur'),
+                  d.guardianName!,
+                ),
               if (d.guardianPhone != null)
-                _info('Contact parent', d.guardianPhone!),
-              _info('Redoublant', d.repeater ? 'Oui / Yes' : 'Non / No'),
-              if (d.gender != null) _info('Sexe', d.gender!),
-              _info('Classe', d.className),
-              if (d.seriesName != null) _info('Série', d.seriesName!),
+                _info(
+                  d.labels.text('Guardian contact', 'Contact parent'),
+                  d.guardianPhone!,
+                ),
+              _info(
+                d.labels.text('Repeater', 'Redoublant'),
+                d.repeater
+                    ? d.labels.text('Yes', 'Oui')
+                    : d.labels.text('No', 'Non'),
+              ),
+              if (d.gender != null)
+                _info(d.labels.text('Gender', 'Sexe'), d.gender!),
+              _info(d.labels.text('Class', 'Classe'), d.className),
+              if (d.seriesName != null)
+                _info(d.labels.text('Series', 'Série'), d.seriesName!),
               if (d.specialtyName != null)
-                _info('Spécialité', d.specialtyName!),
-              _info('Nb matières', '${d.numberOfSubjects}'),
-              _info('Nb réussites', '${d.numberOfPassed}'),
+                _info(
+                  d.labels.text('Specialty', 'Spécialité'),
+                  d.specialtyName!,
+                ),
+              _info(
+                d.labels.text('Subjects', 'Matières'),
+                '${d.numberOfSubjects}',
+              ),
+              _info(
+                d.labels.text('Subjects passed', 'Matières réussies'),
+                '${d.numberOfPassed}',
+              ),
               if (d.classMasterName != null)
-                _info('Professeur principal', d.classMasterName!),
+                _info(
+                  d.labels.text('Class teacher', 'Professeur principal'),
+                  d.classMasterName!,
+                ),
             ],
           ),
         ),
@@ -191,15 +224,15 @@ pw.Widget _buildPage(
           children: [
             _row(
               [
-                'SUBJECT NAME\nDISCIPLINE',
+                d.labels.text('SUBJECT', 'DISCIPLINE'),
                 d.sequenceLabels.elementAtOrNull(0) ?? 'Seq. X',
                 d.sequenceLabels.elementAtOrNull(1) ?? 'Seq. Y',
-                'AVERAGE\nMOY. TR.',
+                d.labels.text('AVERAGE', 'MOYENNE'),
                 'Coef',
                 'TOTAL\nAV X C',
-                'POS.\nRANG',
-                "TEACHER'S NAME",
-                "TEACHER'S REMARK",
+                d.labels.text('RANK', 'RANG'),
+                d.labels.text('TEACHER', 'PROFESSEUR'),
+                d.labels.text('REMARK', 'APPRÉCIATION'),
               ],
               bold: true,
               fill: PdfColors.grey300,
@@ -228,9 +261,9 @@ pw.Widget _buildPage(
                 '',
                 '',
                 '',
-                '',
                 _fmt(d.totalCoefficients),
                 _fmt(d.totalWeightedPoints),
+                '',
                 '',
                 '',
               ],
@@ -246,22 +279,38 @@ pw.Widget _buildPage(
         pw.Row(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            _avgBox('Moyenne Générale', _fmt(d.generalAverage), flex: 2),
-            _avgBox('Moyenne de la classe', _fmt(d.classAverage), flex: 2),
-            _avgBox('Rang', d.rank == null ? '-' : '${d.rank}', flex: 1),
-            _avgBox('Appréciation', d.appreciation, flex: 2),
+            _avgBox(
+              d.labels.text('General average', 'Moyenne générale'),
+              _fmt(d.generalAverage),
+              flex: 2,
+            ),
+            _avgBox(
+              d.labels.text('Class average', 'Moyenne de la classe'),
+              _fmt(d.classAverage),
+              flex: 2,
+            ),
+            _avgBox(
+              d.labels.text('Rank', 'Rang'),
+              d.rank == null ? '-' : '${d.rank}',
+              flex: 1,
+            ),
+            _avgBox(
+              d.labels.text('Appreciation', 'Appréciation'),
+              d.appreciation,
+              flex: 2,
+            ),
           ],
         ),
         pw.SizedBox(height: 12),
         pw.Text(
-          'Appréciations / Comments',
+          d.labels.text('Comments', 'Appréciations'),
           style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 2),
-        for (final label in const [
-          'Le Professeur / Teacher:',
-          'Le Professeur Principal / Class Teacher:',
-          'Le Chef d\'Établissement / Principal:',
+        for (final label in [
+          d.labels.text('Teacher:', 'Le professeur :'),
+          d.labels.text('Class teacher:', 'Le professeur principal :'),
+          d.labels.text('Principal:', 'Le chef d\'établissement :'),
         ])
           pw.Padding(
             padding: const pw.EdgeInsets.only(bottom: 5),
@@ -270,10 +319,10 @@ pw.Widget _buildPage(
         pw.SizedBox(height: 8),
         pw.Row(
           children: [
-            _sign('Le Professeur'),
-            _sign('Le Professeur Principal'),
+            _sign(d.labels.text('Teacher', 'Le professeur')),
+            _sign(d.labels.text('Class teacher', 'Le professeur principal')),
             _sign(
-              'Le Chef d\'Établissement',
+              d.labels.text('Principal', 'Le chef d\'établissement'),
               signature: signature,
               principalName: d.principalName,
             ),
@@ -359,7 +408,7 @@ pw.Widget _disciplinaryRecord(ReportCardData d) {
     crossAxisAlignment: pw.CrossAxisAlignment.start,
     children: [
       pw.Text(
-        'DISCIPLINARY RECORD / DOSSIER DISCIPLINAIRE',
+        d.labels.text('DISCIPLINARY RECORD', 'DOSSIER DISCIPLINAIRE'),
         style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold),
       ),
       pw.SizedBox(height: 2),
@@ -371,18 +420,18 @@ pw.Widget _disciplinaryRecord(ReportCardData d) {
         },
         children: [
           _row(
-            ["No. of absences / Nr. d'absences", '${d.absences}'],
+            [d.labels.text('Absences', 'Absences'), '${d.absences}'],
             centerCols: const {1},
           ),
           _row(
             [
-              'Disciplinary council / Conseil disciplinaire',
+              d.labels.text('Disciplinary councils', 'Conseils disciplinaires'),
               '${d.disciplinaryCouncils}',
             ],
             centerCols: const {1},
           ),
           _row(
-            ['Warning / Avertissement', '${d.warnings}'],
+            [d.labels.text('Warnings', 'Avertissements'), '${d.warnings}'],
             centerCols: const {1},
           ),
           _row(['Suspension', '${d.suspensions}'], centerCols: const {1}),

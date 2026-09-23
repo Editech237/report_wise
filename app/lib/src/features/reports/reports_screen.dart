@@ -127,12 +127,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         final expected = base.students
             .where((s) => s.classId == classId)
             .length;
-        final selectedTerm = base.terms
-            .where((t) => t.id == termId)
-            .firstOrNull;
         final ready =
-            widget.school.currentTermNumber != null &&
-            selectedTerm?.number == widget.school.currentTermNumber &&
             expected > 0 &&
             sequences.length == 2 &&
             results.every(
@@ -242,7 +237,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       name.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_');
 
   Future<void> _exportSingle(_Base base) async {
-    if (!_termReady) {
+    if (!widget.isAdmin || !_termReady) {
       _showNotReady();
       return;
     }
@@ -261,7 +256,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Future<void> _printSingle(_Base base) async {
-    if (!_termReady) {
+    if (!widget.isAdmin || !_termReady) {
       _showNotReady();
       return;
     }
@@ -272,7 +267,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Future<void> _exportAll(_Base base, List<PeriodResult> list) async {
-    if (!_termReady) {
+    if (!widget.isAdmin || !_termReady) {
       _showNotReady();
       return;
     }
@@ -289,7 +284,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Future<void> _printAll(_Base base, List<PeriodResult> list) async {
-    if (!_termReady) {
+    if (!widget.isAdmin || !_termReady) {
       _showNotReady();
       return;
     }
@@ -573,7 +568,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             child: Padding(
               padding: EdgeInsets.all(24),
               child: Text(
-                'This term report is locked until both sequences have complete marks and computed results for every student.',
+                'This term report is locked until both sequences have complete computed results for every student. Check Academic > Results and compute both sequences first.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.accentRed,
@@ -672,7 +667,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         FilledButton.icon(
-                          onPressed: _busy || !_termReady
+                          onPressed: _busy || !widget.isAdmin || !_termReady
                               ? null
                               : () => _exportSingle(base),
                           icon: _busy
@@ -687,14 +682,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           label: const Text('Export PDF'),
                         ),
                         OutlinedButton.icon(
-                          onPressed: _termReady
+                          onPressed: widget.isAdmin && _termReady
                               ? () => _printSingle(base)
                               : null,
                           icon: const Icon(Icons.print_outlined, size: 18),
                           label: const Text('Print'),
                         ),
                         OutlinedButton.icon(
-                          onPressed: _termReady
+                          onPressed: widget.isAdmin && _termReady
                               ? () => _exportAll(base, list)
                               : null,
                           icon: const Icon(
@@ -704,7 +699,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           label: Text('Export all (${list.length})'),
                         ),
                         OutlinedButton.icon(
-                          onPressed: _termReady
+                          onPressed: widget.isAdmin && _termReady
                               ? () => _printAll(base, list)
                               : null,
                           icon: const Icon(Icons.print_rounded, size: 18),

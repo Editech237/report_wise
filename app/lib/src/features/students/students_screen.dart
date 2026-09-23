@@ -5,13 +5,17 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/providers/academic_providers.dart';
 import '../../core/providers/repository_providers.dart';
 import '../../core/providers/students_provider.dart';
+import '../../core/providers/supabase_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/form_widgets.dart';
 import '../../core/widgets/shimmer.dart';
 import '../../data/entities.dart';
 import '../../data/repositories/student_repository.dart';
+import '../../data/repositories/student_import_repository.dart';
 import 'student_details_screen.dart';
 import 'student_import_dialog.dart';
+import 'student_import_review_dialog.dart';
+import 'student_pdf_import_dialog.dart';
 
 class StudentsScreen extends ConsumerWidget {
   final School school;
@@ -101,6 +105,13 @@ class StudentsScreen extends ConsumerWidget {
                             ),
                       icon: const Icon(Icons.upload_file_outlined, size: 18),
                       label: const Text('Import'),
+                    ),
+                  if (isAdmin) const SizedBox(width: 8),
+                  if (isAdmin)
+                    OutlinedButton.icon(
+                      onPressed: () => _scanPdf(context, ref, school),
+                      icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                      label: const Text('Scan PDF'),
                     ),
                   if (isAdmin) const SizedBox(width: 8),
                   if (isAdmin)
@@ -389,6 +400,63 @@ class StudentsScreen extends ConsumerWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Imported $imported students')));
+    }
+  }
+
+  Future<void> _scanPdf(
+    BuildContext context,
+    WidgetRef ref,
+    School school,
+  ) async {
+    final client = ref.read(supabaseClientProvider);
+    if (client == null) return;
+    final yearId = _currentYear(ref);
+    if (yearId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Select an academic year before scanning students.'),
+        ),
+      );
+      return;
+    }
+    final academicRepository = ref.read(academicRepositoryProvider);
+    if (academicRepository == null) return;
+    List<SchoolClass> classes;
+    try {
+      classes = await academicRepository.classesFor(
+        schoolId: school.id,
+        academicYearId: yearId,
+      );
+    } catch (error) {
+      if (context.mounted) _showError(context, 'Could not load classes', error);
+      return;
+    }
+    if (!context.mounted) return;
+    final batch = await showDialog<StudentImportBatch>(
+      context: context,
+      builder: (_) => StudentPdfImportDialog(
+        school: school,
+        repository: StudentImportRepository(client),
+      ),
+      barrierDismissible: false,
+    );
+    if (batch != null && context.mounted) {
+      final importRepository = StudentImportRepository(client);
+      final imported = await showDialog<int>(
+        context: context,
+        builder: (_) => StudentImportReviewDialog(
+          academicYearId: yearId,
+          classes: classes,
+          batch: batch,
+          repository: importRepository,
+        ),
+      );
+      if (imported != null && context.mounted) {
+        invalidateSchoolData(ref, school.id, yearId);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Imported $imported students from PDF')),
+        );
+      }
     }
   }
 
@@ -771,7 +839,6 @@ class _StudentDialog extends StatefulWidget {
 class _StudentDialogState extends State<_StudentDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name,
-      _matricule,
       _placeOfBirth,
       _guardianName,
       _guardianPhone;
@@ -785,7 +852,6 @@ class _StudentDialogState extends State<_StudentDialog> {
     super.initState();
     final e = widget.existing;
     _name = TextEditingController(text: e?.student.fullName ?? '');
-    _matricule = TextEditingController(text: e?.student.matricule ?? '');
     _placeOfBirth = TextEditingController(text: e?.student.placeOfBirth ?? '');
     _guardianName = TextEditingController(text: e?.student.guardianName ?? '');
     _guardianPhone = TextEditingController(
@@ -800,7 +866,6 @@ class _StudentDialogState extends State<_StudentDialog> {
   @override
   void dispose() {
     _name.dispose();
-    _matricule.dispose();
     _placeOfBirth.dispose();
     _guardianName.dispose();
     _guardianPhone.dispose();
@@ -813,9 +878,7 @@ class _StudentDialogState extends State<_StudentDialog> {
       context,
       _StudentDraft(
         fullName: _name.text.trim(),
-        matricule: _matricule.text.trim().isEmpty
-            ? null
-            : _matricule.text.trim(),
+        matricule: null,
         placeOfBirth: _placeOfBirth.text.trim().isEmpty
             ? null
             : _placeOfBirth.text.trim(),
@@ -855,14 +918,11 @@ class _StudentDialogState extends State<_StudentDialog> {
                   v == null || v.trim().isEmpty ? 'Required' : null,
             ),
             const SizedBox(height: 14),
-            TextFormField(
-              controller: _matricule,
-              decoration: const InputDecoration(
-                labelText: 'Matricule (optional)',
-                prefixIcon: Icon(Icons.badge_outlined),
-                hintText: 'e.g. 24-0123',
+            if (isEdit)
+              Text(
+                'Matricule: ${widget.existing!.student.matricule ?? 'Generated on save'}',
               ),
-            ),
+            if (isEdit) const SizedBox(height: 14),
             const SizedBox(height: 14),
             TextFormField(
               controller: _placeOfBirth,

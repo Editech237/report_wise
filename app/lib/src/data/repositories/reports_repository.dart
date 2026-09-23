@@ -46,4 +46,17 @@ class ReportsRepository {
         .maybeSingle();
     return row != null;
   }
+
+  /// Number of report cards recorded for the school in an academic year.
+  Future<int> generatedCount({
+    required String schoolId,
+    required String academicYearId,
+  }) async {
+    final result = await _client
+        .from('report_cards')
+        .select('id')
+        .eq('school_id', schoolId)
+        .eq('academic_year_id', academicYearId);
+    return (result as List).length;
+  }
 }

@@ -23,22 +23,31 @@ Future<(String, String)> _readEnv() async {
 }
 
 void main() {
-  testWidgets('Supabase.initialize against real project', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final (url, key) = await _readEnv();
-    print('URL=$url');
-    print('KEY_PRESENT=${key.isNotEmpty}');
+  TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'Supabase.initialize against real project',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final (url, key) = await _readEnv();
 
-    try {
-      await Supabase.initialize(url: url, publishableKey: key);
-      final c = Supabase.instance.client;
-      print('INIT_OK client=$c');
-      final r = await c.from('education_types').select();
-      print('QUERY_OK rows=${(r as List).length}');
-    } catch (e, st) {
-      print('INIT_FAILED: $e');
-      print('STACK:\n$st');
-      rethrow;
-    }
-  });
+      try {
+        await Supabase.initialize(url: url, publishableKey: key);
+        final c = Supabase.instance.client;
+        print('INIT_OK client=$c');
+        final r = await c
+            .from('education_types')
+            .select()
+            .timeout(const Duration(seconds: 10));
+        print('QUERY_OK rows=${(r as List).length}');
+      } catch (e, st) {
+        print('INIT_FAILED: $e');
+        print('STACK:\n$st');
+        rethrow;
+      } finally {
+        await Supabase.instance.dispose();
+      }
+    },
+    skip: !const bool.fromEnvironment('RUN_SUPABASE_DIAGNOSTIC'),
+    timeout: const Timeout(Duration(seconds: 30)),
+  );
 }
