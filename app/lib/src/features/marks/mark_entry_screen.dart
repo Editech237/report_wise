@@ -45,6 +45,7 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
 
   String? _assignmentId;
   String? _sequenceId;
+  String? _mobileClassId;
 
   bool _loadingBook = false;
   bool _saving = false;
@@ -155,6 +156,10 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
     setState(() {
       _assignmentId = book.teacherAssignmentId;
       _sequenceId = book.sequenceId;
+      _mobileClassId = base.assignments
+          .where((a) => a.id == book.teacherAssignmentId)
+          .firstOrNull
+          ?.classId;
     });
     await _loadBook(base, book.teacherAssignmentId, book.sequenceId);
   }
@@ -576,138 +581,143 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
                       ),
                     ),
                   ),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final width = constraints.maxWidth < 600
-                        ? constraints.maxWidth
-                        : (constraints.maxWidth - 12) / 2;
-                    return Wrap(
-                      spacing: 12,
-                      runSpacing: 10,
-                      children: [
-                        SizedBox(
-                          width: width,
-                          child: AppDropdown<String?>(
-                            key: ValueKey('assign:$_assignmentId'),
-                            label: '1. Choose your class · subject',
-                            value: _assignmentId,
-                            items: [
-                              const DropdownMenuItem(
-                                value: null,
-                                child: Text('Select your class · subject'),
-                              ),
-                              ...base.assignments.map(
-                                (a) => DropdownMenuItem(
-                                  value: a.id,
-                                  child: Text(
-                                    '${a.className} · ${a.subjectName}',
-                                    overflow: TextOverflow.ellipsis,
+                if (MediaQuery.sizeOf(context).width < 700)
+                  Expanded(child: _buildMobileFlow(base))
+                else ...[
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = constraints.maxWidth < 600
+                          ? constraints.maxWidth
+                          : (constraints.maxWidth - 12) / 2;
+                      return Wrap(
+                        spacing: 12,
+                        runSpacing: 10,
+                        children: [
+                          SizedBox(
+                            width: width,
+                            child: AppDropdown<String?>(
+                              key: ValueKey('assign:$_assignmentId'),
+                              label: '1. Choose your class · subject',
+                              value: _assignmentId,
+                              items: [
+                                const DropdownMenuItem(
+                                  value: null,
+                                  child: Text('Select your class · subject'),
+                                ),
+                                ...base.assignments.map(
+                                  (a) => DropdownMenuItem(
+                                    value: a.id,
+                                    child: Text(
+                                      '${a.className} · ${a.subjectName}',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                            onChanged: (v) {
-                              setState(() => _assignmentId = v);
-                              if (v != null && _sequenceId != null) {
-                                _loadBook(base, v, _sequenceId!);
-                              }
-                            },
+                              ],
+                              onChanged: (v) {
+                                setState(() => _assignmentId = v);
+                                if (v != null && _sequenceId != null) {
+                                  _loadBook(base, v, _sequenceId!);
+                                }
+                              },
+                            ),
                           ),
-                        ),
-                        SizedBox(
-                          width: width,
-                          child: AppDropdown<String?>(
-                            key: ValueKey('seq:$_sequenceId'),
-                            label: '2. Choose the sequence for the active term',
-                            value: _sequenceId,
-                            items: [
-                              const DropdownMenuItem(
-                                value: null,
-                                child: Text('Select the sequence'),
-                              ),
-                              ...base.sequences.map(
-                                (s) => DropdownMenuItem(
-                                  value: s.id,
-                                  child: Text(
-                                    '${s.name} · ${s.status}',
-                                    overflow: TextOverflow.ellipsis,
+                          SizedBox(
+                            width: width,
+                            child: AppDropdown<String?>(
+                              key: ValueKey('seq:$_sequenceId'),
+                              label:
+                                  '2. Choose the sequence for the active term',
+                              value: _sequenceId,
+                              items: [
+                                const DropdownMenuItem(
+                                  value: null,
+                                  child: Text('Select the sequence'),
+                                ),
+                                ...base.sequences.map(
+                                  (s) => DropdownMenuItem(
+                                    value: s.id,
+                                    child: Text(
+                                      '${s.name} · ${s.status}',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                            onChanged: (v) {
-                              setState(() => _sequenceId = v);
-                              if (v != null && _assignmentId != null) {
-                                _loadBook(base, _assignmentId!, v);
-                              }
-                            },
+                              ],
+                              onChanged: (v) {
+                                setState(() => _sequenceId = v);
+                                if (v != null && _assignmentId != null) {
+                                  _loadBook(base, _assignmentId!, v);
+                                }
+                              },
+                            ),
                           ),
+                        ],
+                      );
+                    },
+                  ),
+                  if (widget.school.currentTermNumber == null)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 10),
+                      child: Text(
+                        'Set the current academic term in School Settings before entering marks.',
+                        style: TextStyle(
+                          color: AppColors.accentRed,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
-                    );
-                  },
-                ),
-                if (widget.school.currentTermNumber == null)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 10),
-                    child: Text(
-                      'Set the current academic term in School Settings before entering marks.',
-                      style: TextStyle(
-                        color: AppColors.accentRed,
-                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
-                const SizedBox(height: 16),
-                if (_loadingBook)
-                  const Expanded(child: ShimmerPanel())
-                else if (_bookId == null)
-                  const Expanded(
-                    child: Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.touch_app_outlined,
-                              size: 40,
-                              color: AppColors.onSurfaceVariant,
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              'Pick your class · subject and the sequence above',
-                              style: TextStyle(
-                                fontFamily: 'Manrope',
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            SizedBox(height: 6),
-                            Text(
-                              'The list of students in that class will appear here and you can enter their marks.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 13,
+                  const SizedBox(height: 16),
+                  if (_loadingBook)
+                    const Expanded(child: ShimmerPanel())
+                  else if (_bookId == null)
+                    const Expanded(
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.touch_app_outlined,
+                                size: 40,
                                 color: AppColors.onSurfaceVariant,
                               ),
-                            ),
-                          ],
+                              SizedBox(height: 12),
+                              Text(
+                                'Pick your class · subject and the sequence above',
+                                style: TextStyle(
+                                  fontFamily: 'Manrope',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(height: 6),
+                              Text(
+                                'The list of students in that class will appear here and you can enter their marks.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 13,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  )
-                else if (_students.isEmpty)
-                  const Expanded(
-                    child: Center(
-                      child: Text(
-                        'This class has no students yet. Add students from the Students screen.',
+                    )
+                  else if (_students.isEmpty)
+                    const Expanded(
+                      child: Center(
+                        child: Text(
+                          'This class has no students yet. Add students from the Students screen.',
+                        ),
                       ),
-                    ),
-                  )
-                else
-                  Expanded(child: _buildBook(base)),
+                    )
+                  else
+                    Expanded(child: _buildBook(base)),
+                ],
               ],
             ],
           ),
@@ -749,10 +759,12 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
         const _GradingLegend(),
         const SizedBox(height: 10),
         Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SingleChildScrollView(child: _buildGrid()),
-          ),
+          child: MediaQuery.sizeOf(context).width < 700
+              ? _buildMobileGrid()
+              : SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SingleChildScrollView(child: _buildGrid()),
+                ),
         ),
         if (_events.isNotEmpty) _HistoryTile(events: _events),
       ],
@@ -769,7 +781,10 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
   Widget _buildSummary(_BaseData base) {
     final subject = _subjectConfig;
     final totalCells = _students.length * _components.length;
-    return Row(
+    return Wrap(
+      spacing: 10,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -809,7 +824,6 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
               style: const TextStyle(fontFamily: 'Lexend', fontSize: 12.5),
             ),
           ),
-        const Spacer(),
         Text(
           totalCells == 0
               ? '${_students.length} students'
@@ -817,6 +831,223 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
+    );
+  }
+
+  Widget _buildMobileFlow(_BaseData base) {
+    final classIds = <String>[];
+    for (final assignment in base.assignments) {
+      if (!classIds.contains(assignment.classId))
+        classIds.add(assignment.classId);
+    }
+
+    if (_bookId != null && _assignmentId != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _MobileBackButton(
+            label: 'Change class or subject',
+            onPressed: () => setState(() {
+              _disposeCells();
+              _bookId = null;
+              _assignmentId = null;
+              _sequenceId = null;
+              _mobileClassId = null;
+              _students = const [];
+            }),
+          ),
+          const SizedBox(height: 8),
+          Expanded(child: _buildBook(base)),
+        ],
+      );
+    }
+
+    final selectedClassId = _mobileClassId;
+    if (selectedClassId == null) {
+      return SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _MobileStepHeader(
+              step: 'STEP 1 OF 3',
+              title: 'Choose your class',
+              help: 'Tap the class where you want to enter marks.',
+            ),
+            const SizedBox(height: 12),
+            for (final classId in classIds)
+              _MobileChoiceCard(
+                icon: Icons.class_outlined,
+                title: base.assignments
+                    .firstWhere((a) => a.classId == classId)
+                    .className,
+                subtitle:
+                    '${base.assignments.where((a) => a.classId == classId).length} subject(s) assigned to you',
+                onTap: () => setState(() => _mobileClassId = classId),
+              ),
+          ],
+        ),
+      );
+    }
+
+    final classAssignments = base.assignments
+        .where((a) => a.classId == selectedClassId)
+        .toList();
+    final selectedAssignment = classAssignments
+        .where((a) => a.id == _assignmentId)
+        .firstOrNull;
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _MobileBackButton(
+            label: 'All my classes',
+            onPressed: () => setState(() {
+              _mobileClassId = null;
+              _assignmentId = null;
+              _sequenceId = null;
+            }),
+          ),
+          const SizedBox(height: 8),
+          _MobileStepHeader(
+            step: selectedAssignment == null ? 'STEP 2 OF 3' : 'STEP 3 OF 3',
+            title: selectedAssignment == null
+                ? '${classAssignments.first.className} subjects'
+                : selectedAssignment.subjectName,
+            help: selectedAssignment == null
+                ? 'Choose the subject you are teaching.'
+                : 'Choose the sequence, then enter marks for each student.',
+          ),
+          const SizedBox(height: 12),
+          if (selectedAssignment == null)
+            for (final assignment in classAssignments)
+              _MobileChoiceCard(
+                icon: Icons.menu_book_outlined,
+                title: assignment.subjectName,
+                subtitle: 'Open mark entry for this subject',
+                onTap: () => setState(() {
+                  _assignmentId = assignment.id;
+                  _sequenceId = null;
+                }),
+              )
+          else ...[
+            _MobileSelectionCard(
+              label: 'SUBJECT SELECTED',
+              value: selectedAssignment.subjectName,
+              icon: Icons.check_circle_outline,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Which sequence are you entering?',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            for (final sequence in base.sequences)
+              _MobileChoiceCard(
+                icon: Icons.edit_note_rounded,
+                title: sequence.name,
+                subtitle: sequence.status == 'OPEN'
+                    ? 'Open for mark entry'
+                    : sequence.status,
+                enabled: sequence.status == 'OPEN',
+                onTap: sequence.status == 'OPEN'
+                    ? () {
+                        setState(() => _sequenceId = sequence.id);
+                        _loadBook(base, selectedAssignment.id, sequence.id);
+                      }
+                    : null,
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileGrid() {
+    return ListView.separated(
+      padding: const EdgeInsets.only(bottom: 20),
+      itemCount: _students.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final student = _students[index];
+        final preview = _studentPreview(student);
+        return Card(
+          margin: EdgeInsets.zero,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: const BorderSide(color: AppColors.border),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${index + 1}. ${student.fullName}',
+                        style: const TextStyle(
+                          fontFamily: 'Manrope',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                    _PreviewCell(preview: preview.avg, label: 'AVG /20'),
+                  ],
+                ),
+                if (student.matricule?.isNotEmpty == true) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    student.matricule!,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+                const Divider(height: 20),
+                for (final component in _components)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            component.name,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        Text(
+                          'out of ${_fmtNum(component.maxScore)}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(width: 8),
+                        _ScoreCell(
+                          value: _cellFor(student.enrollmentId, component.id),
+                          editable: _canEdit,
+                          large: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    preview.points == null
+                        ? 'Total: —'
+                        : 'Weighted points: ${_fmtNum(preview.points!)}',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1041,7 +1272,10 @@ class _WorkflowBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           const Icon(Icons.flag_outlined, size: 16, color: AppColors.primary),
           const SizedBox(width: 8),
@@ -1057,7 +1291,6 @@ class _WorkflowBar extends StatelessWidget {
                 fontStyle: FontStyle.italic,
               ),
             ),
-          const Spacer(),
           if (canEdit)
             FilledButton.icon(
               onPressed: saving ? null : onSave,
@@ -1127,7 +1360,12 @@ class _StatusPill extends StatelessWidget {
 class _ScoreCell extends StatefulWidget {
   final _CellValue value;
   final bool editable;
-  const _ScoreCell({required this.value, required this.editable});
+  final bool large;
+  const _ScoreCell({
+    required this.value,
+    required this.editable,
+    this.large = false,
+  });
 
   @override
   State<_ScoreCell> createState() => _ScoreCellState();
@@ -1198,7 +1436,7 @@ class _ScoreCellState extends State<_ScoreCell> {
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          width: 76,
+          width: widget.large ? 94 : 76,
           child: TextField(
             controller: widget.value.score,
             enabled: canType,
@@ -1519,25 +1757,252 @@ class _BookCard extends StatelessWidget {
   }
 }
 
+class _MobileStepHeader extends StatelessWidget {
+  final String step;
+  final String title;
+  final String help;
+
+  const _MobileStepHeader({
+    required this.step,
+    required this.title,
+    required this.help,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          step,
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: AppColors.primary,
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          title,
+          style: const TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          help,
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 12.5,
+            color: AppColors.onSurfaceVariant.withOpacity(0.8),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MobileBackButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+
+  const _MobileBackButton({required this.label, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.arrow_back_rounded, size: 18),
+        label: Text(label),
+        style: TextButton.styleFrom(padding: EdgeInsets.zero),
+      ),
+    );
+  }
+}
+
+class _MobileChoiceCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+  final bool enabled;
+
+  const _MobileChoiceCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.enabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = enabled ? AppColors.primary : AppColors.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        color: enabled ? Colors.white : AppColors.surfaceLow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontFamily: 'Manrope',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          color: AppColors.onSurfaceVariant.withOpacity(0.75),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  enabled
+                      ? Icons.chevron_right_rounded
+                      : Icons.lock_outline_rounded,
+                  color: color,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileSelectionCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+
+  const _MobileSelectionCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                    letterSpacing: .8,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontFamily: 'Manrope',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PreviewCell extends StatelessWidget {
   final double? preview;
   final bool bold;
-  const _PreviewCell({required this.preview, this.bold = false});
+  final String? label;
+  const _PreviewCell({required this.preview, this.bold = false, this.label});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Text(
-        preview == null ? '—' : _fmtNum(preview!),
-        style: TextStyle(
-          fontFamily: 'Lexend',
-          fontSize: 12.5,
-          fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
-          color: preview == null
-              ? AppColors.onSurfaceVariant
-              : AppColors.onSurface,
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (label != null)
+            Text(
+              label!,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+          Text(
+            preview == null ? '—' : _fmtNum(preview!),
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12.5,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+              color: preview == null
+                  ? AppColors.onSurfaceVariant
+                  : AppColors.onSurface,
+            ),
+          ),
+        ],
       ),
     );
   }
