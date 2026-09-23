@@ -36,13 +36,12 @@ class _ClassesScreenState extends State<ClassesScreen> {
     final years = await _academic.academicYears(widget.school.id);
     final year = years.firstWhere(
       (y) => y.isCurrent,
-      orElse: () => years.isNotEmpty ? years.first : (throw StateError('No academic year')),
+      orElse: () => years.isNotEmpty
+          ? years.first
+          : (throw StateError('No academic year')),
     );
     final results = await Future.wait([
-      _academic.classesFor(
-        schoolId: widget.school.id,
-        academicYearId: year.id,
-      ),
+      _academic.classesFor(schoolId: widget.school.id, academicYearId: year.id),
       _academic.cycles(),
       _academic.levels(),
       _academic.series(),
@@ -63,8 +62,8 @@ class _ClassesScreenState extends State<ClassesScreen> {
   }
 
   void _refresh() => setState(() {
-        _future = _load();
-      });
+    _future = _load();
+  });
 
   Future<void> _create() async {
     final data = await _future;
@@ -142,11 +141,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
     );
     if (draft == null || !mounted) return;
     try {
-      await _academic.updateClass(
-        cls.id,
-        name: draft.name,
-        room: draft.room,
-      );
+      await _academic.updateClass(cls.id, name: draft.name, room: draft.room);
       _refresh();
     } on Exception catch (e) {
       if (!mounted) return;
@@ -166,15 +161,15 @@ class _ClassesScreenState extends State<ClassesScreen> {
 
   void _showError(String message, Object error) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$message: $error')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$message: $error')));
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 16 : 24),
       child: FutureBuilder<_ClassesData>(
         future: _future,
         builder: (context, snapshot) {
@@ -192,15 +187,20 @@ class _ClassesScreenState extends State<ClassesScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Text('Classes', style: Theme.of(context).textTheme.headlineSmall),
+                  Text(
+                    'Classes',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
                   const SizedBox(width: 12),
                   Chip(
                     avatar: const Icon(Icons.event, size: 16),
                     label: Text(data.year.name),
                   ),
-                  const Spacer(),
                   IconButton(
                     tooltip: 'Refresh',
                     onPressed: _refresh,
@@ -277,7 +277,8 @@ class _ClassTile extends StatelessWidget {
     String subtitle = cls.levelName ?? '';
     if (cls.seriesName != null) subtitle += ' · ${cls.seriesName}';
     if (cls.specialtyName != null) subtitle += ' · ${cls.specialtyName}';
-    if (cls.room != null && cls.room!.isNotEmpty) subtitle += '  ·  Room ${cls.room}';
+    if (cls.room != null && cls.room!.isNotEmpty)
+      subtitle += '  ·  Room ${cls.room}';
 
     return Card(
       child: ListTile(
@@ -287,10 +288,7 @@ class _ClassTile extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Switch(
-              value: cls.isActive,
-              onChanged: onToggleActive,
-            ),
+            Switch(value: cls.isActive, onChanged: onToggleActive),
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               tooltip: 'Edit',
@@ -375,7 +373,7 @@ class _ClassSubmission {
   final String? room;
   final SubjectSetMode subjectMode;
   final List<({String subjectId, double coefficient, double? weeklyHours})>
-      customEntries;
+  customEntries;
 
   _ClassSubmission({
     required this.subsystem,
@@ -465,15 +463,14 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
   int _previewCount = 0;
 
   List<String> get _subsystemOptions => switch (widget.school.subsystem) {
-        'BILINGUAL' => const ['FRANCOPHONE', 'ANGLOPHONE'],
-        _ => [widget.school.subsystem],
-      };
+    'BILINGUAL' => const ['FRANCOPHONE', 'ANGLOPHONE'],
+    _ => [widget.school.subsystem],
+  };
 
-  List<String> get _educationTypeOptions =>
-      switch (widget.school.schoolType) {
-        'BOTH' => const ['GENERAL', 'TECHNICAL'],
-        _ => [widget.school.schoolType],
-      };
+  List<String> get _educationTypeOptions => switch (widget.school.schoolType) {
+    'BOTH' => const ['GENERAL', 'TECHNICAL'],
+    _ => [widget.school.schoolType],
+  };
 
   @override
   void initState() {
@@ -481,7 +478,8 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
     final existing = widget.existing;
     _subsystem = existing?.subsystem ?? _subsystemOptions.first;
     final typeCode = _educationTypeOptions.first;
-    _educationTypeId = existing?.educationTypeId ?? _idForEducationType(typeCode);
+    _educationTypeId =
+        existing?.educationTypeId ?? _idForEducationType(typeCode);
     _cycleId = existing?.cycleId;
     _levelId = existing?.levelId;
     _seriesId = existing?.seriesId;
@@ -502,31 +500,35 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
   }
 
   List<Cycle> get _cyclesForType => widget.cycles
-      .where((c) =>
-          c.educationTypeId == _educationTypeId &&
-          (c.subsystem == null || c.subsystem == _subsystem))
+      .where(
+        (c) =>
+            c.educationTypeId == _educationTypeId &&
+            (c.subsystem == null || c.subsystem == _subsystem),
+      )
       .toList();
 
   List<Level> get _levelsForSelection {
     if (_cycleId == null) return const [];
     return widget.levels
-        .where((l) =>
-            l.cycleId == _cycleId &&
-            (l.subsystem == null || l.subsystem == _subsystem))
+        .where(
+          (l) =>
+              l.cycleId == _cycleId &&
+              (l.subsystem == null || l.subsystem == _subsystem),
+        )
         .toList();
   }
 
   List<Series> get _seriesForType => widget.series
-      .where((s) =>
-          s.educationTypeId == _educationTypeId &&
-          (s.subsystem == null || s.subsystem == _subsystem))
+      .where(
+        (s) =>
+            s.educationTypeId == _educationTypeId &&
+            (s.subsystem == null || s.subsystem == _subsystem),
+      )
       .toList();
 
   List<Specialty> get _specialtiesForSeries {
     if (_seriesId == null) return const [];
-    return widget.specialties
-        .where((s) => s.seriesId == _seriesId)
-        .toList();
+    return widget.specialties.where((s) => s.seriesId == _seriesId).toList();
   }
 
   List<SubjectEntry> get _selectedEntries =>
@@ -572,7 +574,9 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
         _previewCount = setup.subjects.length;
         // Seed the custom list with the national set so "custom" starts from
         // a sensible baseline.
-        final national = {for (final s in setup.subjects) s.subjectId: s.coefficient};
+        final national = {
+          for (final s in setup.subjects) s.subjectId: s.coefficient,
+        };
         for (final e in _customEntries) {
           e.selected = national.containsKey(e.subject.id);
           e.coefficient = national[e.subject.id] ?? 1;
@@ -609,11 +613,13 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
           ? SubjectSetMode.custom
           : SubjectSetMode.national,
       customEntries: _selectedEntries
-          .map((e) => (
-                subjectId: e.subject.id,
-                coefficient: e.coefficient,
-                weeklyHours: null,
-              ))
+          .map(
+            (e) => (
+              subjectId: e.subject.id,
+              coefficient: e.coefficient,
+              weeklyHours: null,
+            ),
+          )
           .toList(),
     );
   }
@@ -624,7 +630,7 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
     return AlertDialog(
       title: Text(isEdit ? 'Edit class' : 'New class'),
       content: SizedBox(
-        width: 480,
+        width: MediaQuery.sizeOf(context).width < 600 ? double.infinity : 480,
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
@@ -638,19 +644,29 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                     decoration: BoxDecoration(
                       color: AppColors.accentAmberLight,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.accentAmber.withOpacity(0.3)),
+                      border: Border.all(
+                        color: AppColors.accentAmber.withOpacity(0.3),
+                      ),
                     ),
                     child: const Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info_outline_rounded, size: 16, color: AppColors.accentAmber),
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 16,
+                          color: AppColors.accentAmber,
+                        ),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Level, series and specialty cannot be changed after creation '
                             '(they drive the curriculum). Edit the name and room here — '
                             'create a new class to change the academic path.',
-                            style: TextStyle(fontFamily: 'Lexend', fontSize: 12, height: 1.4),
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 12,
+                              height: 1.4,
+                            ),
                           ),
                         ),
                       ],
@@ -661,7 +677,9 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                   value: _educationTypeId,
                   enabled: !isEdit,
                   items: _educationTypeOptions.map((code) {
-                    final et = widget.educationTypes.where((e) => e.code == code).toList();
+                    final et = widget.educationTypes
+                        .where((e) => e.code == code)
+                        .toList();
                     final match = et.isEmpty ? null : et.first;
                     final id = match?.id ?? _educationTypeId;
                     final label = match?.name ?? code;
@@ -686,19 +704,24 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                   onChanged: _subsystemOptions.length == 1
                       ? null
                       : (v) => setState(() {
-                            _subsystem = v!;
-                            _cycleId = null;
-                            _levelId = null;
-                            _seriesId = null;
-                            _previewCount = 0;
-                          }),
+                          _subsystem = v!;
+                          _cycleId = null;
+                          _levelId = null;
+                          _seriesId = null;
+                          _previewCount = 0;
+                        }),
                 ),
                 _dropdown(
                   label: 'Cycle',
                   value: _cycleId,
                   enabled: !isEdit,
                   items: _cyclesForType
-                      .map((c) => (c.id, '${c.name} (${c.code})${c.subsystem != null ? ' · ${c.subsystem}' : ''}'))
+                      .map(
+                        (c) => (
+                          c.id,
+                          '${c.name} (${c.code})${c.subsystem != null ? ' · ${c.subsystem}' : ''}',
+                        ),
+                      )
                       .toList(),
                   onChanged: (v) => setState(() {
                     _cycleId = v;
@@ -711,8 +734,9 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                   label: 'Level',
                   value: _levelId,
                   enabled: !isEdit,
-                  items:
-                      _levelsForSelection.map((l) => (l.id, l.name)).toList(),
+                  items: _levelsForSelection
+                      .map((l) => (l.id, l.name))
+                      .toList(),
                   onChanged: (v) {
                     setState(() {
                       _levelId = v;
@@ -728,7 +752,9 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                   enabled: !isEdit,
                   items: [
                     (null, '— None —'),
-                    ..._seriesForType.map((s) => (s.id, '${s.name} (${s.code})')),
+                    ..._seriesForType.map(
+                      (s) => (s.id, '${s.name} (${s.code})'),
+                    ),
                   ],
                   onChanged: (v) => setState(() {
                     _seriesId = v;
@@ -745,8 +771,9 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                     enabled: !isEdit,
                     items: [
                       (null, '— None —'),
-                      ..._specialtiesForSeries
-                          .map((s) => (s.id, '${s.name} (${s.code})')),
+                      ..._specialtiesForSeries.map(
+                        (s) => (s.id, '${s.name} (${s.code})'),
+                      ),
                     ],
                     onChanged: (v) => setState(() {
                       _specialtyId = v;
@@ -757,12 +784,15 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                 TextFormField(
                   controller: _nameController,
                   decoration: const InputDecoration(labelText: 'Class name'),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Name is required'
+                      : null,
                 ),
                 TextFormField(
                   controller: _roomController,
-                  decoration: const InputDecoration(labelText: 'Room (optional)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Room (optional)',
+                  ),
                 ),
                 if (!isEdit) ...[
                   const SizedBox(height: 16),
@@ -798,7 +828,8 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                       ),
                     ],
                     selected: {_source},
-                    onSelectionChanged: (s) => setState(() => _source = s.first),
+                    onSelectionChanged: (s) =>
+                        setState(() => _source = s.first),
                   ),
                   if (_source == _Source.custom) ...[
                     const SizedBox(height: 8),
@@ -814,7 +845,8 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                             value: e.selected,
                             onChanged: (v) =>
                                 setState(() => e.selected = v ?? false),
-                            title: Text(e.subject.name,
+                            title: Text(
+                              e.subject.name,
                               overflow: TextOverflow.ellipsis,
                             ),
                             subtitle: Text(e.subject.code),
@@ -824,13 +856,15 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                                 enabled: e.selected,
                                 controller: e.controller,
                                 keyboardType:
-                                    const TextInputType.numberWithOptions(decimal: true),
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
                                 decoration: const InputDecoration(
                                   labelText: 'Coeff',
                                   isDense: true,
                                 ),
-                                onChanged: (v) =>
-                                    e.coefficient = double.tryParse(v) ?? e.coefficient,
+                                onChanged: (v) => e.coefficient =
+                                    double.tryParse(v) ?? e.coefficient,
                               ),
                             ),
                           );
@@ -849,7 +883,11 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.menu_book_outlined, size: 16, color: AppColors.primary),
+                        const Icon(
+                          Icons.menu_book_outlined,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -858,7 +896,9 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 12,
-                              color: AppColors.onSurfaceVariant.withOpacity(0.8),
+                              color: AppColors.onSurfaceVariant.withOpacity(
+                                0.8,
+                              ),
                             ),
                           ),
                         ),
@@ -908,8 +948,14 @@ class _ClassEditorDialogState extends State<_ClassEditorDialog> {
           labelText: label,
           filled: true,
           fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
         ),
         items: items
             .map((it) => DropdownMenuItem(value: it.$1, child: Text(it.$2)))

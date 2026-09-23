@@ -34,7 +34,10 @@ class StudentsScreen extends ConsumerWidget {
     final classFilter = ref.watch(studentsClassFilterProvider);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      padding: EdgeInsets.symmetric(
+        horizontal: MediaQuery.sizeOf(context).width < 600 ? 16 : 28,
+        vertical: 20,
+      ),
       child: dashboardAsync.when(
         loading: () => const ShimmerPanel(),
         error: (e, _) => _ErrorPane(
@@ -61,7 +64,10 @@ class StudentsScreen extends ConsumerWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,9 +94,7 @@ class StudentsScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const Spacer(),
                   _YearChip(name: year.name),
-                  const SizedBox(width: 12),
                   if (isAdmin)
                     OutlinedButton.icon(
                       onPressed: data.classes.isEmpty
@@ -135,58 +139,76 @@ class StudentsScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Search name, matricule or class…',
-                        prefixIcon: const Icon(Icons.search_rounded, size: 18),
-                        isDense: true,
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.border),
-                        ),
-                      ),
-                      onChanged: (v) =>
-                          ref.read(studentsSearchProvider.notifier).state = v,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 200,
-                    child: AppDropdown<String?>(
-                      label: 'Class',
-                      value: classFilter,
-                      items: [
-                        const DropdownMenuItem(
-                          value: null,
-                          child: Text('All classes'),
-                        ),
-                        ...data.classes.map(
-                          (c) => DropdownMenuItem(
-                            value: c.id,
-                            child: Text(
-                              c.name,
-                              overflow: TextOverflow.ellipsis,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final searchWidth = constraints.maxWidth < 600
+                      ? constraints.maxWidth
+                      : constraints.maxWidth - 220;
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 10,
+                    children: [
+                      SizedBox(
+                        width: searchWidth,
+                        child: TextField(
+                          decoration: InputDecoration(
+                            hintText: 'Search name, matricule or class…',
+                            prefixIcon: const Icon(
+                              Icons.search_rounded,
+                              size: 18,
+                            ),
+                            isDense: true,
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: AppColors.border,
+                              ),
                             ),
                           ),
+                          onChanged: (v) =>
+                              ref.read(studentsSearchProvider.notifier).state =
+                                  v,
                         ),
-                      ],
-                      onChanged: (v) =>
-                          ref.read(studentsClassFilterProvider.notifier).state =
-                              v,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: 'Refresh',
-                    onPressed: refresh,
-                    icon: const Icon(Icons.refresh_rounded),
-                  ),
-                ],
+                      ),
+                      SizedBox(
+                        width: 200,
+                        child: AppDropdown<String?>(
+                          label: 'Class',
+                          value: classFilter,
+                          items: [
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Text('All classes'),
+                            ),
+                            ...data.classes.map(
+                              (c) => DropdownMenuItem(
+                                value: c.id,
+                                child: Text(
+                                  c.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ],
+                          onChanged: (v) =>
+                              ref
+                                      .read(
+                                        studentsClassFilterProvider.notifier,
+                                      )
+                                      .state =
+                                  v,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Refresh',
+                        onPressed: refresh,
+                        icon: const Icon(Icons.refresh_rounded),
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 16),
               if (data.classes.isEmpty)

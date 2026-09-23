@@ -49,14 +49,19 @@ class _TeachersScreenState extends State<TeachersScreen> {
     final years = await _academic.academicYears(widget.school.id);
     final year = years.firstWhere(
       (y) => y.isCurrent,
-      orElse: () => years.isNotEmpty ? years.first : (throw StateError('No academic year')),
+      orElse: () => years.isNotEmpty
+          ? years.first
+          : (throw StateError('No academic year')),
     );
     final results = await Future.wait([
       _teachers.listMembers(widget.school.id),
       _academic.classesFor(schoolId: widget.school.id, academicYearId: year.id),
       _academic.subjectsForSchool(schoolId: widget.school.id),
       _academic.specialties(),
-      _teachers.listAssignments(schoolId: widget.school.id, academicYearId: year.id),
+      _teachers.listAssignments(
+        schoolId: widget.school.id,
+        academicYearId: year.id,
+      ),
     ]);
     return _TeachersData(
       year: year,
@@ -69,14 +74,14 @@ class _TeachersScreenState extends State<TeachersScreen> {
   }
 
   void _refresh() => setState(() {
-        _future = _load();
-      });
+    _future = _load();
+  });
 
   void _showError(String message, Object error) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$message: $error')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$message: $error')));
   }
 
   Future<void> _addTeacher() async {
@@ -106,11 +111,17 @@ class _TeachersScreenState extends State<TeachersScreen> {
         );
       } else if (result['alreadyMember'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('That user is already a member of this school.')),
+          const SnackBar(
+            content: Text('That user is already a member of this school.'),
+          ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Added existing account (${draft.email}) as a teacher.')),
+          SnackBar(
+            content: Text(
+              'Added existing account (${draft.email}) as a teacher.',
+            ),
+          ),
         );
       }
     } on Exception catch (e) {
@@ -118,10 +129,13 @@ class _TeachersScreenState extends State<TeachersScreen> {
       final message = e is PostgrestException ? e.message : '$e';
       final friendly = message.contains('administrators can create teachers')
           ? 'Only an administrator can add teachers.'
-          : message.contains('already registered') || message.contains('already exists')
-              ? 'An account with this email already exists — it was not re-created.'
-              : 'Could not add the teacher: $message';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendly)));
+          : message.contains('already registered') ||
+                message.contains('already exists')
+          ? 'An account with this email already exists — it was not re-created.'
+          : 'Could not add the teacher: $message';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(friendly)));
     }
   }
 
@@ -135,7 +149,10 @@ class _TeachersScreenState extends State<TeachersScreen> {
           'assignments and mark books will be removed.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Remove'),
@@ -166,7 +183,10 @@ class _TeachersScreenState extends State<TeachersScreen> {
           'immediately.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Generate new password'),
@@ -238,7 +258,10 @@ class _TeachersScreenState extends State<TeachersScreen> {
           '${assignment.subjectName}?',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete'),
@@ -257,7 +280,10 @@ class _TeachersScreenState extends State<TeachersScreen> {
 
   Future<void> _setClassTeacher(SchoolClass cls, String? membershipId) async {
     try {
-      await _teachers.setClassTeacher(classId: cls.id, membershipId: membershipId);
+      await _teachers.setClassTeacher(
+        classId: cls.id,
+        membershipId: membershipId,
+      );
       _refresh();
     } on Exception catch (e) {
       _showError('Could not set the class teacher', e);
@@ -286,30 +312,71 @@ class _TeachersScreenState extends State<TeachersScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-                child: Row(
+                padding: EdgeInsets.fromLTRB(
+                  MediaQuery.sizeOf(context).width < 600 ? 16 : 24,
+                  20,
+                  MediaQuery.sizeOf(context).width < 600 ? 16 : 24,
+                  0,
+                ),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('TEACHER REGISTRY',
-                          style: TextStyle(fontFamily: 'Lexend', fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary, letterSpacing: 1.1)),
-                      SizedBox(height: 4),
-                      Text('Teachers & assignments',
-                          style: TextStyle(fontFamily: 'Manrope', fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.onSurface)),
-                    ]),
-                    const Spacer(),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'TEACHER REGISTRY',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Teachers & assignments',
+                          style: TextStyle(
+                            fontFamily: 'Manrope',
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(99),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: Row(children: [
-                        const Icon(Icons.event_rounded, size: 14, color: AppColors.primary),
-                        const SizedBox(width: 6),
-                        Text(data.year.name,
-                            style: const TextStyle(fontFamily: 'Lexend', fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
-                      ]),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.event_rounded,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            data.year.name,
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     if (widget.isAdmin) ...[
                       const SizedBox(width: 12),
@@ -332,7 +399,10 @@ class _TeachersScreenState extends State<TeachersScreen> {
               const TabBar(
                 tabs: [
                   Tab(text: 'Teachers', icon: Icon(Icons.groups_outlined)),
-                  Tab(text: 'Assignments & class teachers', icon: Icon(Icons.hub_outlined)),
+                  Tab(
+                    text: 'Assignments & class teachers',
+                    icon: Icon(Icons.hub_outlined),
+                  ),
                 ],
               ),
               Expanded(
@@ -384,7 +454,11 @@ class _ErrorPane extends StatelessWidget {
   final String message;
   final Object error;
   final VoidCallback onRetry;
-  const _ErrorPane({required this.message, required this.error, required this.onRetry});
+  const _ErrorPane({
+    required this.message,
+    required this.error,
+    required this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -441,13 +515,17 @@ class _TeachersListTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text('${teachers.length} teachers · ${staff.length} other staff',
-            style: Theme.of(context).textTheme.bodySmall),
+        Text(
+          '${teachers.length} teachers · ${staff.length} other staff',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
         const SizedBox(height: 8),
         if (teachers.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(child: Text('No teachers yet — add one with "Add teacher".')),
+            child: Center(
+              child: Text('No teachers yet — add one with "Add teacher".'),
+            ),
           ),
         for (final m in [...teachers, ...staff])
           Card(
@@ -459,32 +537,57 @@ class _TeachersListTab extends StatelessWidget {
                   m.fullName.isEmpty
                       ? '?'
                       : m.fullName.characters.first.toUpperCase(),
-                  style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-              title: Text(m.fullName,
-                  style: const TextStyle(fontFamily: 'Manrope', fontWeight: FontWeight.w600, fontSize: 14)),
-              subtitle: Text([
-                if (m.email != null && m.email!.isNotEmpty) m.email!,
-                if (m.staffId != null && m.staffId!.isNotEmpty) 'Staff: ${m.staffId}',
-              ].join(' · ')),
+              title: Text(
+                m.fullName,
+                style: const TextStyle(
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              subtitle: Text(
+                [
+                  if (m.email != null && m.email!.isNotEmpty) m.email!,
+                  if (m.staffId != null && m.staffId!.isNotEmpty)
+                    'Staff: ${m.staffId}',
+                ].join(' · '),
+              ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(99),
                     ),
-                    child: Text(_roleLabel(m.role),
-                        style: const TextStyle(fontFamily: 'Lexend', fontSize: 10.5, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                    child: Text(
+                      _roleLabel(m.role),
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
                   ),
-                  if (m.role == 'TEACHER' && countByTeacher.containsKey(m.membershipId))
+                  if (m.role == 'TEACHER' &&
+                      countByTeacher.containsKey(m.membershipId))
                     Padding(
                       padding: const EdgeInsets.only(left: 8),
-                      child: Text('${countByTeacher[m.membershipId]} assignments',
-                          style: Theme.of(context).textTheme.bodySmall),
+                      child: Text(
+                        '${countByTeacher[m.membershipId]} assignments',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ),
                   if (isAdmin && m.role == 'TEACHER') ...[
                     IconButton(
@@ -534,8 +637,10 @@ class _AssignmentsTab extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text('Teacher assignments',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Teacher assignments',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const Spacer(),
             if (isAdmin)
               FilledButton.icon(
@@ -556,14 +661,26 @@ class _AssignmentsTab extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 8),
             child: ListTile(
               dense: true,
-              leading: const Icon(Icons.school_outlined, color: AppColors.primary, size: 20),
-              title: Text('${a.teacherName} → ${a.className}',
-                  style: const TextStyle(fontFamily: 'Manrope', fontSize: 13.5, fontWeight: FontWeight.w600)),
-              subtitle: Text([
-                a.subjectName,
-                if (a.specialtyName != null) a.specialtyName!,
-                if (a.teachingRole == 'CLASS_TEACHER') 'class teacher',
-              ].join(' · ')),
+              leading: const Icon(
+                Icons.school_outlined,
+                color: AppColors.primary,
+                size: 20,
+              ),
+              title: Text(
+                '${a.teacherName} → ${a.className}',
+                style: const TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: Text(
+                [
+                  a.subjectName,
+                  if (a.specialtyName != null) a.specialtyName!,
+                  if (a.teachingRole == 'CLASS_TEACHER') 'class teacher',
+                ].join(' · '),
+              ),
               trailing: isAdmin
                   ? IconButton(
                       icon: const Icon(Icons.delete_outline, size: 18),
@@ -576,13 +693,17 @@ class _AssignmentsTab extends StatelessWidget {
         const SizedBox(height: 24),
         Row(
           children: [
-            Text('Class teachers (professeur principal)',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Class teachers (professeur principal)',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
           ],
         ),
         const SizedBox(height: 4),
-        Text('Each class can have one class teacher selected from the staff.',
-            style: Theme.of(context).textTheme.bodySmall),
+        Text(
+          'Each class can have one class teacher selected from the staff.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
         const SizedBox(height: 8),
         if (data.classes.isEmpty)
           const Padding(
@@ -597,8 +718,14 @@ class _AssignmentsTab extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(cls.name,
-                        style: const TextStyle(fontFamily: 'Manrope', fontSize: 13.5, fontWeight: FontWeight.w600)),
+                    child: Text(
+                      cls.name,
+                      style: const TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                   SizedBox(
                     width: 260,
@@ -610,11 +737,19 @@ class _AssignmentsTab extends StatelessWidget {
                         isDense: true,
                       ),
                       items: [
-                        const DropdownMenuItem(value: null, child: Text('— None —')),
-                        ...teachers.map((t) => DropdownMenuItem(
-                              value: t.membershipId,
-                              child: Text(t.fullName, overflow: TextOverflow.ellipsis),
-                            )),
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('— None —'),
+                        ),
+                        ...teachers.map(
+                          (t) => DropdownMenuItem(
+                            value: t.membershipId,
+                            child: Text(
+                              t.fullName,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
                       ],
                       onChanged: isAdmin
                           ? (v) => onSetClassTeacher(cls, v)
@@ -639,7 +774,12 @@ class _TeacherDraft {
   final String email;
   final String? phone;
   final String? staffId;
-  _TeacherDraft({required this.fullName, required this.email, this.phone, this.staffId});
+  _TeacherDraft({
+    required this.fullName,
+    required this.email,
+    this.phone,
+    this.staffId,
+  });
 }
 
 class _AddTeacherDialog extends StatefulWidget {
@@ -681,23 +821,41 @@ class _AddTeacherDialogState extends State<_AddTeacherDialog> {
               decoration: BoxDecoration(
                 color: AppColors.accentAmberLight,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.accentAmber.withOpacity(0.3)),
+                border: Border.all(
+                  color: AppColors.accentAmber.withOpacity(0.3),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
-                  Row(children: [
-                    Icon(Icons.info_outline_rounded, size: 16, color: AppColors.accentAmber),
-                    SizedBox(width: 8),
-                    Text('How it works',
-                        style: TextStyle(fontFamily: 'Manrope', fontSize: 13, fontWeight: FontWeight.w700)),
-                  ]),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 16,
+                        color: AppColors.accentAmber,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'How it works',
+                        style: TextStyle(
+                          fontFamily: 'Manrope',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
                   SizedBox(height: 6),
                   Text(
                     'An account is created automatically with a generated password, '
                     'which you can share by WhatsApp, email or SMS. The teacher can '
                     'also reset it from the app (Forgot password).',
-                    style: TextStyle(fontFamily: 'Lexend', fontSize: 12.5, height: 1.5),
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12.5,
+                      height: 1.5,
+                    ),
                   ),
                 ],
               ),
@@ -705,16 +863,25 @@ class _AddTeacherDialogState extends State<_AddTeacherDialog> {
             const SizedBox(height: 14),
             TextFormField(
               controller: _fullName,
-              decoration: const InputDecoration(labelText: 'Full name *', prefixIcon: Icon(Icons.person_outline_rounded)),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+              decoration: const InputDecoration(
+                labelText: 'Full name *',
+                prefixIcon: Icon(Icons.person_outline_rounded),
+              ),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Name is required' : null,
             ),
             const SizedBox(height: 14),
             TextFormField(
               controller: _email,
               keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(labelText: 'Email *', prefixIcon: Icon(Icons.mail_outline)),
+              decoration: const InputDecoration(
+                labelText: 'Email *',
+                prefixIcon: Icon(Icons.mail_outline),
+              ),
               validator: (v) =>
-                  (v == null || v.trim().isEmpty || !v.contains('@')) ? 'Enter a valid email' : null,
+                  (v == null || v.trim().isEmpty || !v.contains('@'))
+                  ? 'Enter a valid email'
+                  : null,
             ),
             const SizedBox(height: 14),
             Row(
@@ -723,14 +890,20 @@ class _AddTeacherDialogState extends State<_AddTeacherDialog> {
                   child: TextFormField(
                     controller: _phone,
                     keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(labelText: 'Phone (optional)', prefixIcon: Icon(Icons.phone_outlined)),
+                    decoration: const InputDecoration(
+                      labelText: 'Phone (optional)',
+                      prefixIcon: Icon(Icons.phone_outlined),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextFormField(
                     controller: _staffId,
-                    decoration: const InputDecoration(labelText: 'Staff ID (optional)', prefixIcon: Icon(Icons.badge_outlined)),
+                    decoration: const InputDecoration(
+                      labelText: 'Staff ID (optional)',
+                      prefixIcon: Icon(Icons.badge_outlined),
+                    ),
                   ),
                 ),
               ],
@@ -739,7 +912,10 @@ class _AddTeacherDialogState extends State<_AddTeacherDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
         AppModalButton(
           label: 'Create teacher',
           onPressed: () {
@@ -750,7 +926,9 @@ class _AddTeacherDialogState extends State<_AddTeacherDialog> {
                 fullName: _fullName.text.trim(),
                 email: _email.text.trim(),
                 phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-                staffId: _staffId.text.trim().isEmpty ? null : _staffId.text.trim(),
+                staffId: _staffId.text.trim().isEmpty
+                    ? null
+                    : _staffId.text.trim(),
               ),
             );
           },
@@ -782,11 +960,23 @@ class _PasswordRevealDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$fullName · $email',
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: AppColors.onSurfaceVariant)),
+          Text(
+            '$fullName · $email',
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 13,
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 14),
-          Text('Share this password with them securely (WhatsApp, email or SMS):',
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 12.5, height: 1.4)),
+          Text(
+            'Share this password with them securely (WhatsApp, email or SMS):',
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12.5,
+              height: 1.4,
+            ),
+          ),
           const SizedBox(height: 10),
           Container(
             width: double.infinity,
@@ -799,8 +989,15 @@ class _PasswordRevealDialog extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: SelectableText(password,
-                      style: const TextStyle(fontFamily: 'Manrope', fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                  child: SelectableText(
+                    password,
+                    style: const TextStyle(
+                      fontFamily: 'Manrope',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
                 ),
                 IconButton(
                   tooltip: 'Copy password',
@@ -808,7 +1005,9 @@ class _PasswordRevealDialog extends StatelessWidget {
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: password));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Password copied to clipboard')),
+                      const SnackBar(
+                        content: Text('Password copied to clipboard'),
+                      ),
                     );
                   },
                 ),
@@ -819,7 +1018,12 @@ class _PasswordRevealDialog extends StatelessWidget {
           Text(
             'They sign in with this email and password. If they ever forget it, '
             'they can use "Forgot password" on the login screen to reset it.',
-            style: TextStyle(fontFamily: 'Lexend', fontSize: 12, height: 1.4, color: AppColors.onSurfaceVariant.withOpacity(0.8)),
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12,
+              height: 1.4,
+              color: AppColors.onSurfaceVariant.withOpacity(0.8),
+            ),
           ),
         ],
       ),
@@ -877,7 +1081,7 @@ class _AssignmentDialogState extends State<_AssignmentDialog> {
     return AppModal(
       title: 'New assignment',
       icon: Icons.hub_outlined,
-      width: 460,
+      width: MediaQuery.sizeOf(context).width < 600 ? double.infinity : 460,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -885,7 +1089,12 @@ class _AssignmentDialogState extends State<_AssignmentDialog> {
             label: 'Teacher *',
             value: _teacher,
             items: widget.members
-                .map((m) => DropdownMenuItem(value: m.membershipId, child: Text(m.fullName)))
+                .map(
+                  (m) => DropdownMenuItem(
+                    value: m.membershipId,
+                    child: Text(m.fullName),
+                  ),
+                )
                 .toList(),
             onChanged: (v) => setState(() => _teacher = v),
           ),
@@ -903,7 +1112,12 @@ class _AssignmentDialogState extends State<_AssignmentDialog> {
             label: 'Subject *',
             value: _subjectId,
             items: widget.subjects
-                .map((s) => DropdownMenuItem(value: s.id, child: Text('${s.name} (${s.code})')))
+                .map(
+                  (s) => DropdownMenuItem(
+                    value: s.id,
+                    child: Text('${s.name} (${s.code})'),
+                  ),
+                )
                 .toList(),
             onChanged: (v) => setState(() => _subjectId = v),
           ),
@@ -914,8 +1128,9 @@ class _AssignmentDialogState extends State<_AssignmentDialog> {
               value: _specialtyId,
               items: [
                 const DropdownMenuItem(value: null, child: Text('None')),
-                ...widget.specialties
-                    .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))),
+                ...widget.specialties.map(
+                  (s) => DropdownMenuItem(value: s.id, child: Text(s.name)),
+                ),
               ],
               onChanged: (v) => setState(() => _specialtyId = v),
             ),
@@ -925,25 +1140,42 @@ class _AssignmentDialogState extends State<_AssignmentDialog> {
             label: 'Role',
             value: _role,
             items: const [
-              DropdownMenuItem(value: 'SUBJECT_TEACHER', child: Text('Subject teacher')),
-              DropdownMenuItem(value: 'CLASS_TEACHER', child: Text('Class teacher')),
+              DropdownMenuItem(
+                value: 'SUBJECT_TEACHER',
+                child: Text('Subject teacher'),
+              ),
+              DropdownMenuItem(
+                value: 'CLASS_TEACHER',
+                child: Text('Class teacher'),
+              ),
             ],
             onChanged: (v) => setState(() => _role = v!),
           ),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: Text(_error!, style: const TextStyle(color: AppColors.accentRed, fontSize: 12)),
+              child: Text(
+                _error!,
+                style: const TextStyle(
+                  color: AppColors.accentRed,
+                  fontSize: 12,
+                ),
+              ),
             ),
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
         AppModalButton(
           label: 'Assign',
           onPressed: () {
             if (_teacher == null || _classId == null || _subjectId == null) {
-              setState(() => _error = 'Teacher, class and subject are required');
+              setState(
+                () => _error = 'Teacher, class and subject are required',
+              );
               return;
             }
             Navigator.pop(

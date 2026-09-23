@@ -453,11 +453,16 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
         }
         final base = snap.data!;
         return Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(
+            MediaQuery.sizeOf(context).width < 600 ? 16 : 24,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -484,7 +489,6 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
                       ),
                     ],
                   ),
-                  const Spacer(),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -572,66 +576,76 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
                       ),
                     ),
                   ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppDropdown<String?>(
-                        key: ValueKey('assign:$_assignmentId'),
-                        label: '1. Choose your class · subject',
-                        value: _assignmentId,
-                        items: [
-                          const DropdownMenuItem(
-                            value: null,
-                            child: Text('Select your class · subject'),
-                          ),
-                          ...base.assignments.map(
-                            (a) => DropdownMenuItem(
-                              value: a.id,
-                              child: Text(
-                                '${a.className} · ${a.subjectName}',
-                                overflow: TextOverflow.ellipsis,
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final width = constraints.maxWidth < 600
+                        ? constraints.maxWidth
+                        : (constraints.maxWidth - 12) / 2;
+                    return Wrap(
+                      spacing: 12,
+                      runSpacing: 10,
+                      children: [
+                        SizedBox(
+                          width: width,
+                          child: AppDropdown<String?>(
+                            key: ValueKey('assign:$_assignmentId'),
+                            label: '1. Choose your class · subject',
+                            value: _assignmentId,
+                            items: [
+                              const DropdownMenuItem(
+                                value: null,
+                                child: Text('Select your class · subject'),
                               ),
-                            ),
-                          ),
-                        ],
-                        onChanged: (v) {
-                          setState(() => _assignmentId = v);
-                          if (v != null && _sequenceId != null) {
-                            _loadBook(base, v, _sequenceId!);
-                          }
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: AppDropdown<String?>(
-                        key: ValueKey('seq:$_sequenceId'),
-                        label: '2. Choose the sequence for the active term',
-                        value: _sequenceId,
-                        items: [
-                          const DropdownMenuItem(
-                            value: null,
-                            child: Text('Select the sequence'),
-                          ),
-                          ...base.sequences.map(
-                            (s) => DropdownMenuItem(
-                              value: s.id,
-                              child: Text(
-                                '${s.name} · ${s.status}',
-                                overflow: TextOverflow.ellipsis,
+                              ...base.assignments.map(
+                                (a) => DropdownMenuItem(
+                                  value: a.id,
+                                  child: Text(
+                                    '${a.className} · ${a.subjectName}',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
+                            onChanged: (v) {
+                              setState(() => _assignmentId = v);
+                              if (v != null && _sequenceId != null) {
+                                _loadBook(base, v, _sequenceId!);
+                              }
+                            },
                           ),
-                        ],
-                        onChanged: (v) {
-                          setState(() => _sequenceId = v);
-                          if (v != null && _assignmentId != null) {
-                            _loadBook(base, _assignmentId!, v);
-                          }
-                        },
-                      ),
-                    ),
-                  ],
+                        ),
+                        SizedBox(
+                          width: width,
+                          child: AppDropdown<String?>(
+                            key: ValueKey('seq:$_sequenceId'),
+                            label: '2. Choose the sequence for the active term',
+                            value: _sequenceId,
+                            items: [
+                              const DropdownMenuItem(
+                                value: null,
+                                child: Text('Select the sequence'),
+                              ),
+                              ...base.sequences.map(
+                                (s) => DropdownMenuItem(
+                                  value: s.id,
+                                  child: Text(
+                                    '${s.name} · ${s.status}',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            onChanged: (v) {
+                              setState(() => _sequenceId = v);
+                              if (v != null && _assignmentId != null) {
+                                _loadBook(base, _assignmentId!, v);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 if (widget.school.currentTermNumber == null)
                   const Padding(

@@ -78,8 +78,8 @@ class _StudentImportReviewDialogState extends State<StudentImportReviewDialog> {
       builder: (context) => AlertDialog(
         title: const Text('Text read from the PDF'),
         content: SizedBox(
-          width: 750,
-          height: 500,
+          width: MediaQuery.sizeOf(context).width < 600 ? double.infinity : 750,
+          height: MediaQuery.sizeOf(context).height < 700 ? 360 : 500,
           child: SingleChildScrollView(
             child: SelectableText(
               _pages
@@ -114,8 +114,10 @@ class _StudentImportReviewDialogState extends State<StudentImportReviewDialog> {
         builder: (context) => AlertDialog(
           title: const Text('Original register'),
           content: SizedBox(
-            width: 800,
-            height: 600,
+            width: MediaQuery.sizeOf(context).width < 600
+                ? double.infinity
+                : 800,
+            height: MediaQuery.sizeOf(context).height < 700 ? 420 : 600,
             child: PdfPreview(
               build: (_) async => bytes,
               allowPrinting: false,

@@ -362,11 +362,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
         }
         final base = snap.data!;
         return Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(
+            MediaQuery.sizeOf(context).width < 600 ? 16 : 24,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -393,7 +398,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       ),
                     ],
                   ),
-                  const Spacer(),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -417,91 +421,107 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppDropdown<String?>(
-                      label: 'Class',
-                      value: _classId,
-                      items: [
-                        const DropdownMenuItem(
-                          value: null,
-                          child: Text('Select a class'),
-                        ),
-                        ...base.classes.map(
-                          (c) => DropdownMenuItem(
-                            value: c.id,
-                            child: Text(c.name),
-                          ),
-                        ),
-                      ],
-                      onChanged: (v) {
-                        setState(() => _classId = v);
-                        _reload();
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 250,
-                    child: SegmentedButton<String>(
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(value: 'TERM', label: Text('Term')),
-                      ],
-                      style: ButtonStyle(
-                        visualDensity: VisualDensity.compact,
-                        textStyle: WidgetStatePropertyAll(
-                          const TextStyle(fontFamily: 'Lexend', fontSize: 12),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth < 700
+                      ? constraints.maxWidth
+                      : (constraints.maxWidth - 24 - 250) / 2;
+                  return Wrap(
+                    spacing: 12,
+                    runSpacing: 10,
+                    children: [
+                      SizedBox(
+                        width: width,
+                        child: AppDropdown<String?>(
+                          label: 'Class',
+                          value: _classId,
+                          items: [
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Text('Select a class'),
+                            ),
+                            ...base.classes.map(
+                              (c) => DropdownMenuItem(
+                                value: c.id,
+                                child: Text(c.name),
+                              ),
+                            ),
+                          ],
+                          onChanged: (v) {
+                            setState(() => _classId = v);
+                            _reload();
+                          },
                         ),
                       ),
-                      selected: {_periodType},
-                      onSelectionChanged: (s) => setState(() {
-                        _periodType = s.first;
-                        _periodId = null;
-                        _reload();
-                      }),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppDropdown<String?>(
-                      key: ValueKey(_periodType),
-                      label: 'Period',
-                      value: _periodId,
-                      items: switch (_periodType) {
-                        'TERM' => [
-                          const DropdownMenuItem(
-                            value: null,
-                            child: Text('Select a term'),
-                          ),
-                          ...base.terms
-                              .where(
-                                (t) =>
-                                    widget.school.currentTermNumber == null ||
-                                    t.number == widget.school.currentTermNumber,
-                              )
-                              .map(
-                                (t) => DropdownMenuItem(
-                                  value: t.id,
-                                  child: Text(t.name),
-                                ),
+                      SizedBox(
+                        width: constraints.maxWidth < 700
+                            ? constraints.maxWidth
+                            : 250,
+                        child: SegmentedButton<String>(
+                          showSelectedIcon: false,
+                          segments: const [
+                            ButtonSegment(value: 'TERM', label: Text('Term')),
+                          ],
+                          style: ButtonStyle(
+                            visualDensity: VisualDensity.compact,
+                            textStyle: WidgetStatePropertyAll(
+                              const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 12,
                               ),
-                        ],
-                        _ => const [
-                          DropdownMenuItem(
-                            value: null,
-                            child: Text('Select a term'),
+                            ),
                           ),
-                        ],
-                      },
-                      onChanged: (v) {
-                        setState(() => _periodId = v);
-                        _reload();
-                      },
-                    ),
-                  ),
-                ],
+                          selected: {_periodType},
+                          onSelectionChanged: (s) => setState(() {
+                            _periodType = s.first;
+                            _periodId = null;
+                            _reload();
+                          }),
+                        ),
+                      ),
+                      SizedBox(
+                        width: width,
+                        child: AppDropdown<String?>(
+                          key: ValueKey(_periodType),
+                          label: 'Period',
+                          value: _periodId,
+                          items: switch (_periodType) {
+                            'TERM' => [
+                              const DropdownMenuItem(
+                                value: null,
+                                child: Text('Select a term'),
+                              ),
+                              ...base.terms
+                                  .where(
+                                    (t) =>
+                                        widget.school.currentTermNumber ==
+                                            null ||
+                                        t.number ==
+                                            widget.school.currentTermNumber,
+                                  )
+                                  .map(
+                                    (t) => DropdownMenuItem(
+                                      value: t.id,
+                                      child: Text(t.name),
+                                    ),
+                                  ),
+                            ],
+                            _ => const [
+                              DropdownMenuItem(
+                                value: null,
+                                child: Text('Select a term'),
+                              ),
+                            ],
+                          },
+                          onChanged: (v) {
+                            setState(() => _periodId = v);
+                            _reload();
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 16),
               Expanded(child: _buildBody(base)),

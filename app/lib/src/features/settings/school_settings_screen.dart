@@ -154,7 +154,9 @@ class _SchoolSettingsScreenState extends State<SchoolSettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 12,
                         children: [
                           CircleAvatar(
                             radius: 34,
@@ -177,7 +179,9 @@ class _SchoolSettingsScreenState extends State<SchoolSettingsScreen> {
                         ],
                       ),
                       const SizedBox(height: 18),
-                      Row(
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 12,
                         children: [
                           Container(
                             width: 120,
@@ -199,12 +203,22 @@ class _SchoolSettingsScreenState extends State<SchoolSettingsScreen> {
                       _field(_name, 'School name'),
                       _field(_code, 'School code'),
                       _field(_address, 'Address'),
-                      Row(
-                        children: [
-                          Expanded(child: _field(_phone, 'Phone')),
-                          const SizedBox(width: 12),
-                          Expanded(child: _field(_email, 'Email')),
-                        ],
+                      LayoutBuilder(
+                        builder: (context, constraints) =>
+                            constraints.maxWidth < 520
+                            ? Column(
+                                children: [
+                                  _field(_phone, 'Phone'),
+                                  _field(_email, 'Email'),
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  Expanded(child: _field(_phone, 'Phone')),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: _field(_email, 'Email')),
+                                ],
+                              ),
                       ),
                       _field(_region, 'Region'),
                       _field(_principal, 'Principal name'),

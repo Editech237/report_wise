@@ -37,13 +37,12 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
     final years = await _academic.academicYears(widget.school.id);
     final year = years.firstWhere(
       (y) => y.isCurrent,
-      orElse: () => years.isNotEmpty ? years.first : (throw StateError('No academic year')),
+      orElse: () => years.isNotEmpty
+          ? years.first
+          : (throw StateError('No academic year')),
     );
     final results = await Future.wait([
-      _academic.classesFor(
-        schoolId: widget.school.id,
-        academicYearId: year.id,
-      ),
+      _academic.classesFor(schoolId: widget.school.id, academicYearId: year.id),
       _academic.subjectsForSchool(schoolId: widget.school.id),
     ]);
     final data = _SubjectsData(
@@ -80,16 +79,19 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
     final ctx = _ctxForClass(cls, year);
     final setup = await _academic.loadAcademicSetup(ctx);
     final names = {for (final s in catalog) s.id: s.name};
-    final rows = setup.subjects
-        .map((s) => _SubjectRow(
-              subjectId: s.subjectId,
-              name: names[s.subjectId] ?? s.subjectId,
-              code: s.subjectId,
-              coefficient: s.coefficient,
-              source: sourceLabel(s.source.code),
-            ))
-        .toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
+    final rows =
+        setup.subjects
+            .map(
+              (s) => _SubjectRow(
+                subjectId: s.subjectId,
+                name: names[s.subjectId] ?? s.subjectId,
+                code: s.subjectId,
+                coefficient: s.coefficient,
+                source: sourceLabel(s.source.code),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
     return _ResolvedRows(className: cls.name, rows: rows);
   }
 
@@ -120,10 +122,8 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
   ) async {
     final next = await showDialog<double>(
       context: context,
-      builder: (_) => _CoefficientDialog(
-        subjectName: row.name,
-        current: row.coefficient,
-      ),
+      builder: (_) =>
+          _CoefficientDialog(subjectName: row.name, current: row.coefficient),
     );
     if (next == null || !mounted || next == row.coefficient) return;
 
@@ -214,9 +214,9 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
 
   void _showError(String message, Object error) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$message: $error')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$message: $error')));
   }
 
   @override
@@ -236,8 +236,10 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                 children: [
                   Text('Could not load academic setup.'),
                   const SizedBox(height: 8),
-                  Text('${snap.error}',
-                      style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    '${snap.error}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   const SizedBox(height: 12),
                   OutlinedButton(
                     onPressed: () => setState(() {
@@ -259,10 +261,15 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Text('Subjects & coefficients',
-                      style: Theme.of(context).textTheme.headlineSmall),
+                  Text(
+                    'Subjects & coefficients',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
                   const SizedBox(width: 16),
                   SizedBox(
                     width: 280,
@@ -273,15 +280,18 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                         isDense: true,
                       ),
                       items: data.classes
-                          .map((c) =>
-                              DropdownMenuItem(value: c.id, child: Text(c.name)))
+                          .map(
+                            (c) => DropdownMenuItem(
+                              value: c.id,
+                              child: Text(c.name),
+                            ),
+                          )
                           .toList(),
                       onChanged: (v) {
                         if (v != null) _loadSetup(v, data.year, data.catalog);
                       },
                     ),
                   ),
-                  const Spacer(),
                   IconButton(
                     tooltip: 'Refresh',
                     onPressed: () {
@@ -302,13 +312,13 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                     }
                     if (s.hasError) {
                       return Center(
-                        child:
-                            Text('Could not resolve subjects: ${s.error}'),
+                        child: Text('Could not resolve subjects: ${s.error}'),
                       );
                     }
                     final resolved = s.data!;
-                    final matches =
-                        data.classes.where((c) => c.id == _classId).toList();
+                    final matches = data.classes
+                        .where((c) => c.id == _classId)
+                        .toList();
                     if (matches.isEmpty) {
                       return const Center(child: Text('Select a class.'));
                     }
@@ -318,7 +328,10 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                       child: Column(
                         children: [
                           const TabBar(
-                            tabs: [Tab(text: 'Coefficients'), Tab(text: 'Subject catalog')],
+                            tabs: [
+                              Tab(text: 'Coefficients'),
+                              Tab(text: 'Subject catalog'),
+                            ],
                           ),
                           Expanded(
                             child: TabBarView(
@@ -418,16 +431,30 @@ class _CoefficientsTable extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                const Icon(Icons.menu_book_outlined, size: 32, color: AppColors.onSurfaceVariant),
+                const Icon(
+                  Icons.menu_book_outlined,
+                  size: 32,
+                  color: AppColors.onSurfaceVariant,
+                ),
                 const SizedBox(height: 10),
-                const Text('No subjects resolved for this class',
-                    style: TextStyle(fontFamily: 'Manrope', fontSize: 14, fontWeight: FontWeight.w700)),
+                const Text(
+                  'No subjects resolved for this class',
+                  style: TextStyle(
+                    fontFamily: 'Manrope',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Text(
                   'Subjects come from the national curriculum for this level / series. '
                   'If this looks wrong, check that the class level and series are correct.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: AppColors.onSurfaceVariant.withOpacity(0.7)),
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: AppColors.onSurfaceVariant.withOpacity(0.7),
+                  ),
                 ),
               ],
             ),
@@ -438,17 +465,23 @@ class _CoefficientsTable extends StatelessWidget {
           dense: true,
           leading: CircleAvatar(
             radius: 20,
-            child: Text(row.code.length > 2 ? row.code.substring(0, 2) : row.code,
-                style: Theme.of(context).textTheme.labelSmall),
+            child: Text(
+              row.code.length > 2 ? row.code.substring(0, 2) : row.code,
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
           ),
           title: Text(row.name),
-          subtitle: Text(row.source,
-              style: Theme.of(context).textTheme.bodySmall),
+          subtitle: Text(
+            row.source,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('×${_fmt(row.coefficient)}',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                '×${_fmt(row.coefficient)}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(width: 8),
               IconButton(
                 tooltip: 'Change coefficient',
@@ -531,10 +564,7 @@ class _CoefficientDialog extends StatefulWidget {
   final String subjectName;
   final double current;
 
-  const _CoefficientDialog({
-    required this.subjectName,
-    required this.current,
-  });
+  const _CoefficientDialog({required this.subjectName, required this.current});
 
   @override
   State<_CoefficientDialog> createState() => _CoefficientDialogState();
@@ -547,9 +577,7 @@ class _CoefficientDialogState extends State<_CoefficientDialog> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(
-      text: _fmt(widget.current),
-    );
+    _controller = TextEditingController(text: _fmt(widget.current));
   }
 
   @override
@@ -565,14 +593,15 @@ class _CoefficientDialogState extends State<_CoefficientDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Current: ×${_fmt(widget.current)}',
-              style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            'Current: ×${_fmt(widget.current)}',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           const SizedBox(height: 12),
           TextField(
             controller: _controller,
             autofocus: true,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               labelText: 'New coefficient',
               errorText: _error,
@@ -629,14 +658,21 @@ class _ConfirmCoefficientDialog extends StatelessWidget {
         children: [
           Text(subjectName, style: theme.textTheme.titleMedium),
           const SizedBox(height: 4),
-          Text('$className — recorded for this level/series/specialty',
-              style: theme.textTheme.bodySmall,
-              textAlign: TextAlign.center),
+          Text(
+            '$className — recorded for this level/series/specialty',
+            style: theme.textTheme.bodySmall,
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _pill('Current', '×${_fmt(current)}', theme.colorScheme.surfaceContainerHighest, theme.colorScheme.onSurface),
+              _pill(
+                'Current',
+                '×${_fmt(current)}',
+                theme.colorScheme.surfaceContainerHighest,
+                theme.colorScheme.onSurface,
+              ),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Icon(Icons.arrow_forward),
@@ -644,8 +680,12 @@ class _ConfirmCoefficientDialog extends StatelessWidget {
               _pill(
                 'New',
                 '×${_fmt(next)}',
-                increase ? theme.colorScheme.primaryContainer : theme.colorScheme.errorContainer,
-                increase ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onErrorContainer,
+                increase
+                    ? theme.colorScheme.primaryContainer
+                    : theme.colorScheme.errorContainer,
+                increase
+                    ? theme.colorScheme.onPrimaryContainer
+                    : theme.colorScheme.onErrorContainer,
               ),
             ],
           ),
@@ -653,9 +693,9 @@ class _ConfirmCoefficientDialog extends StatelessWidget {
           Text(
             increase
                 ? 'Coefficient increases by ×${_fmt(delta)}. '
-                    'This raises the weight of this subject in averages.'
+                      'This raises the weight of this subject in averages.'
                 : 'Coefficient decreases by ×${_fmt(delta)}. '
-                    'This lowers the weight of this subject in averages.',
+                      'This lowers the weight of this subject in averages.',
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
@@ -693,12 +733,14 @@ class _ConfirmCoefficientDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(label, style: TextStyle(fontSize: 12, color: fg)),
-          Text(value,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: fg,
-              )),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: fg,
+            ),
+          ),
         ],
       ),
     );
@@ -764,7 +806,9 @@ class _AddSubjectDialogState extends State<_AddSubjectDialog> {
             children: [
               TextFormField(
                 controller: _code,
-                decoration: const InputDecoration(labelText: 'Code (e.g. AHLA)'),
+                decoration: const InputDecoration(
+                  labelText: 'Code (e.g. AHLA)',
+                ),
                 validator: (v) =>
                     (v == null || v.trim().isEmpty) ? 'Code is required' : null,
               ),
@@ -776,16 +820,18 @@ class _AddSubjectDialogState extends State<_AddSubjectDialog> {
               ),
               TextFormField(
                 controller: _nameFr,
-                decoration: const InputDecoration(labelText: 'Name (FR, optional)'),
+                decoration: const InputDecoration(
+                  labelText: 'Name (FR, optional)',
+                ),
               ),
               DropdownButtonFormField<String>(
                 initialValue: _type,
                 decoration: const InputDecoration(labelText: 'Type'),
                 items: _types.entries
-                    .map((e) => DropdownMenuItem(
-                          value: e.key,
-                          child: Text(e.value),
-                        ))
+                    .map(
+                      (e) =>
+                          DropdownMenuItem(value: e.key, child: Text(e.value)),
+                    )
                     .toList(),
                 onChanged: (v) => setState(() => _type = v),
               ),
@@ -806,7 +852,9 @@ class _AddSubjectDialogState extends State<_AddSubjectDialog> {
               _SubjectDraft(
                 code: _code.text.trim(),
                 name: _name.text.trim(),
-                nameFr: _nameFr.text.trim().isEmpty ? null : _nameFr.text.trim(),
+                nameFr: _nameFr.text.trim().isEmpty
+                    ? null
+                    : _nameFr.text.trim(),
                 subjectType: _type,
               ),
             );

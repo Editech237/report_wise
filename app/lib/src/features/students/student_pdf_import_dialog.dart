@@ -90,7 +90,7 @@ class _StudentPdfImportDialogState extends State<StudentPdfImportDialog> {
       child: AlertDialog(
         title: const Text('Scan paper register'),
         content: SizedBox(
-          width: 520,
+          width: MediaQuery.sizeOf(context).width < 600 ? double.infinity : 520,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

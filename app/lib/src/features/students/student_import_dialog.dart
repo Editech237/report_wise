@@ -203,8 +203,8 @@ class _StudentImportDialogState extends State<StudentImportDialog> {
     return AlertDialog(
       title: const Text('Import students'),
       content: SizedBox(
-        width: 760,
-        height: 500,
+        width: MediaQuery.sizeOf(context).width < 600 ? double.infinity : 760,
+        height: MediaQuery.sizeOf(context).height < 700 ? 360 : 500,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -102,7 +102,10 @@ class _DashboardView extends StatelessWidget {
     final schoolKpi = metrics?.overallPassRate;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      padding: EdgeInsets.symmetric(
+        horizontal: MediaQuery.sizeOf(context).width < 600 ? 16 : 28,
+        vertical: 24,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -117,18 +120,18 @@ class _DashboardView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Expanded(
-                child: Text(
-                  'Dashboard Overview',
-                  style: TextStyle(
-                    fontFamily: 'Manrope',
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.onSurface,
-                  ),
+              const Text(
+                'Dashboard Overview',
+                style: TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.onSurface,
                 ),
               ),
               Container(
