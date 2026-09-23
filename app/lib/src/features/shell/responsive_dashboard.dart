@@ -229,6 +229,7 @@ class _DashboardView extends StatelessWidget {
               ];
               if (narrow) {
                 return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     for (final card in statCards)
                       Padding(
