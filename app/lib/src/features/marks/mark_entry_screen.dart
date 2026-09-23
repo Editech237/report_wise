@@ -526,11 +526,13 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              _SavedBooksStrip(
-                future: _booksFuture,
-                onOpen: (book) => _openBook(base, book),
-              ),
+              if (MediaQuery.sizeOf(context).width >= 700) ...[
+                const SizedBox(height: 16),
+                _SavedBooksStrip(
+                  future: _booksFuture,
+                  onOpen: (book) => _openBook(base, book),
+                ),
+              ],
               if (base.assignments.isEmpty)
                 const Expanded(
                   child: Center(
@@ -570,7 +572,8 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
                   ),
                 )
               else ...[
-                if (widget.school.currentTermNumber != null)
+                if (widget.school.currentTermNumber != null &&
+                    MediaQuery.sizeOf(context).width >= 700)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Text(
@@ -727,8 +730,12 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
   }
 
   Widget _buildBook(_BaseData base) {
+    final mobile = MediaQuery.sizeOf(context).width < 700;
     final assignment = base.assignments
         .where((a) => a.id == _assignmentId)
+        .firstOrNull;
+    final sequence = base.sequences
+        .where((s) => s.id == _sequenceId)
         .firstOrNull;
     final me = widget.currentMembershipId == null
         ? null
@@ -738,10 +745,18 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _TeacherBanner(
-          currentName: me?.fullName ?? (widget.isAdmin ? 'Administrator' : ''),
-          assignment: assignment,
-        ),
+        if (mobile)
+          _MobileMarkHeader(
+            className: assignment?.className ?? 'Selected class',
+            subjectName: assignment?.subjectName ?? 'Selected subject',
+            sequenceName: sequence?.name ?? 'Selected sequence',
+          )
+        else
+          _TeacherBanner(
+            currentName:
+                me?.fullName ?? (widget.isAdmin ? 'Administrator' : ''),
+            assignment: assignment,
+          ),
         const SizedBox(height: 12),
         _WorkflowBar(
           status: _bookStatus,
@@ -754,10 +769,15 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
           canEdit: _canEdit,
         ),
         const SizedBox(height: 12),
-        _buildSummary(base),
-        const SizedBox(height: 10),
-        const _GradingLegend(),
-        const SizedBox(height: 10),
+        if (!mobile) ...[
+          _buildSummary(base),
+          const SizedBox(height: 10),
+          const _GradingLegend(),
+          const SizedBox(height: 10),
+        ] else ...[
+          const _MobileMarkHint(),
+          const SizedBox(height: 8),
+        ],
         Expanded(
           child: MediaQuery.sizeOf(context).width < 700
               ? _buildMobileGrid()
@@ -766,7 +786,7 @@ class _MarkEntryScreenState extends State<MarkEntryScreen> {
                   child: SingleChildScrollView(child: _buildGrid()),
                 ),
         ),
-        if (_events.isNotEmpty) _HistoryTile(events: _events),
+        if (!mobile && _events.isNotEmpty) _HistoryTile(events: _events),
       ],
     );
   }
@@ -1751,6 +1771,84 @@ class _BookCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileMarkHeader extends StatelessWidget {
+  final String className;
+  final String subjectName;
+  final String sequenceName;
+
+  const _MobileMarkHeader({
+    required this.className,
+    required this.subjectName,
+    required this.sequenceName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withOpacity(0.18)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.edit_note_rounded, color: AppColors.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  subjectName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Manrope',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '$className · $sequenceName',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: AppColors.onSurfaceVariant.withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileMarkHint extends StatelessWidget {
+  const _MobileMarkHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Text(
+        'Enter each mark out of 20. Use the small menu beside a mark for absent or excused.',
+        style: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 11.5,
+          color: AppColors.onSurfaceVariant.withOpacity(0.8),
         ),
       ),
     );
